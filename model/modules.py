@@ -25,12 +25,12 @@ class XEncoder(nn.Module):
         self.dropout = nn.Dropout(0.05)
         assert d_model // 2 == 512
                 
-    def forward(self, x, c_x, seq_len):
+    def forward(self, x, c_x, a_x, seq_len):
         adj = self.loc_adj(x.shape[0], x.shape[1])
         mask = self.get_mask(self.win_size, x.shape[1], seq_len)
         
         x_h = self.hard_atten(c_x)
-        
+
         x = x + self.self_attn(x, mask, adj)
         x_t = x
         

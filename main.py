@@ -65,7 +65,7 @@ def train(model, train_nloader, train_aloader, test_loader, gt, logger):
     print(len(train_nloader), len(train_aloader))
     for epoch in range(cfg.max_epoch):
         for idx, (n_input, a_input) in enumerate(zip(train_nloader, train_aloader)):
-            loss1, loss2, cost = train_func(
+            loss1, loss2, loss3 = train_func(
                 n_input,
                 a_input,
                 model,
@@ -95,14 +95,14 @@ def train(model, train_nloader, train_aloader, test_loader, gt, logger):
 
                 lr = optimizer.param_groups[0]["lr"]
                 logger.info(
-                    "[Epoch:{}/{}, Batch:{}/{}]: loss1:{:.4f} loss2:{:.4f} loss3:{:.4f} | AUC:{:.4f} Anomaly AUC:{:.4f}".format(
+                    "[Epoch:{}/{}, Batch:{}/{}]: loss1:{:.4f} loss2:{:.4f} loss3:{:.4f} | AP:{:.4f} Anomaly AUC:{:.4f}".format(
                         epoch + 1,
                         cfg.max_epoch,
                         idx,
                         len(train_nloader),
                         loss1,
                         loss2,
-                        cost,
+                        loss3,
                         auc,
                         ab_auc,
                     )
@@ -123,7 +123,7 @@ def train(model, train_nloader, train_aloader, test_loader, gt, logger):
         lr = optimizer.param_groups[0]["lr"]
         logger.info(
             "[Epoch:{}/{}]: lr:{:.5f} | loss1:{:.4f} loss2:{:.4f} loss3:{:.4f} | AUC:{:.4f} Anomaly AUC:{:.4f}".format(
-                epoch + 1, cfg.max_epoch, lr, loss1, loss2, cost, auc, ab_auc
+                epoch + 1, cfg.max_epoch, lr, loss1, loss2, loss3, auc, ab_auc
             )
         )
 
@@ -151,7 +151,7 @@ def main(cfg):
         global logger_wandb
         name = "{}_{}_{}_{}_Mem{}_{}".format(args.dataset, args.version, cfg.lr, cfg.train_bs, cfg.a_nums, cfg.n_nums)
         logger_wandb = wandb.init(
-            project="WSV-GST_"+args.dataset + "(clip+i3d)",
+            project="WSV-GST_"+args.dataset + "(clip+i3d+audio)",
             name=name,
             group="epoch-" + args.version + "(clip-pel-ur)",
         )
@@ -226,7 +226,7 @@ def main(cfg):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="WeaklySupAnoDet")
-    parser.add_argument("--dataset", default="ucf", help="anomaly video dataset")
+    parser.add_argument("--dataset", default="xd", help="anomaly video dataset")
     parser.add_argument("--mode", default="train", help="model status: (train or infer)")
     parser.add_argument("--version", default="original", help="change log path name")
     parser.add_argument("--lamda", default=None, type=float, help="lamda")
@@ -242,5 +242,10 @@ if __name__ == "__main__":
     savepath = "./logs/{}_{}_{}_{}".format(args.dataset, args.version, cfg.lr, cfg.train_bs)
     os.makedirs(savepath, exist_ok=True)
     log_writer = SummaryWriter(savepath)
+    if cfg.dataset != "xd-violence":
+        # error
+        print(f"{cfg.dataset} is not supported")
+        print("XD-Violence is only supported for RGB+audio")
+        exit()
 
     main(cfg)
