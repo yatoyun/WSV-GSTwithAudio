@@ -32,8 +32,8 @@ class XModel(nn.Module):
         self.dropout = nn.Dropout(cfg.dropout)
         self.apply(weight_init)
 
-    def forward(self, x, c_x, seq_len):
-        x_e, x_v = self.self_attention(x, c_x, seq_len)
+    def forward(self, x, c_x, a_x, seq_len):
+        x_e, x_v = self.self_attention(x, c_x, a_x, seq_len)
         logits = F.pad(x_e, (self.t - 1, 0))
         logits = self.classifier(logits)
 

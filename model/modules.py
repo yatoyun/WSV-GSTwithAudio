@@ -4,6 +4,7 @@ import torch.nn as nn
 from .layers import *
 from .UR_DMU.model import WSAD
 from .hard_attention import HardAttention
+from .MSBT.MultimodalTransformer import MultimodalTransformer
 
 
 class XEncoder(nn.Module):
@@ -19,28 +20,32 @@ class XEncoder(nn.Module):
         self.dropout2 = Pdropout(dropout)
         self.norm = nn.LayerNorm(d_model)
         self.loc_adj = DistanceAdj(gamma, bias)
-        self.UR_DMU = WSAD(d_model, a_nums = a_nums, n_nums = n_nums, dropout = dropout)
+        self.UR_DMU = WSAD(768, a_nums = a_nums, n_nums = n_nums, dropout = dropout)
         self.hard_atten = HardAttention(k=0.95, num_samples=100, input_dim=d_model//2)
-        self.conv1 = nn.Conv1d(d_model, d_model // 2, kernel_size=1)
-        self.dropout = nn.Dropout(0.05)
+        self.hard_atten2 = HardAttention(k=0.95, num_samples=100, input_dim=d_model//2)
+        # self.conv1 = nn.Conv1d(d_model, d_model // 2, kernel_size=1)
+        # self.dropout = nn.Dropout(0.05)
+
+        self.mm_transformer = MultimodalTransformer()
         assert d_model // 2 == 512
                 
-    def forward(self, x, c_x, seq_len):
+    def forward(self, x, c_x, a_x, seq_len):
         adj = self.loc_adj(x.shape[0], x.shape[1])
         mask = self.get_mask(self.win_size, x.shape[1], seq_len)
         
         x_h = self.hard_atten(c_x)
-        
+
         x = x + self.self_attn(x, mask, adj)
         x_t = x
         
-        x = x.permute(0, 2, 1)
-        x = F.relu(self.conv1(x))
-        x = x.permute(0, 2, 1)
-        x = self.dropout(x)
-        x_v = x
+        # x = x.permute(0, 2, 1)
+        # x = F.relu(self.conv1(x))
+        # x = x.permute(0, 2, 1)
+        # x = self.dropout(x)
+        # x_v = x
         
-        x = torch.cat((x, x_h), -1)
+        # x = torch.cat((x, x_h), -1)
+        x, loss_infoNCE = self.mm_transformer(a_x, x, x_h, seq_len)
         
         x_k = self.UR_DMU(x)
         x = x_k["x"]
@@ -48,11 +53,12 @@ class XEncoder(nn.Module):
         x = x + x_t
         
         x = self.norm(x).permute(0, 2, 1)
-        x = self.dropout1(F.gelu(self.linear1(x) + x_v.permute(0, 2, 1)))
+        x = self.dropout1(F.gelu(self.linear1(x) ))#+ x_v.permute(0, 2, 1)))
         x_e = self.dropout2(F.gelu(self.linear2(x)))
 
         if self.training:
             x_k["x"] = x
+            x_k["loss_infoNCE"] = loss_infoNCE
 
         return x_e, x_k
 

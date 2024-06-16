@@ -27,25 +27,30 @@ def infer_func(model, dataloader, gt, logger, cfg):
         
         seq_len_list = []
 
-        for i, (v_input, clip_input, _) in enumerate(dataloader):
-            v_input = v_input.float().cuda(non_blocking=True)
+        for i, (v_input, clip_input, a_input, _) in enumerate(dataloader):
             seq_len = torch.sum(torch.max(torch.abs(v_input), dim=2)[0] > 0, 1)
+            v_input = v_input[:, :torch.max(seq_len), :]
             clip_input = clip_input[:, :torch.max(seq_len), :]
+            a_input = a_input[:, :torch.max(seq_len), :]
+            
             clip_input = pad_tensor(clip_input, torch.max(seq_len))
             
+            v_input = v_input.float().cuda(non_blocking=True)
             clip_input = clip_input.float().cuda(non_blocking=True)
-            
+            a_input = a_input.float().cuda(non_blocking=True)
+
             seq_len_list.append(seq_len[0])
             
-            if max(seq_len) < 1200:
-                logits, _ = model(v_input, clip_input, seq_len)
+            if max(seq_len) < 600:
+                logits, _ = model(v_input, clip_input, a_input, seq_len)
                 tmp_pred = torch.cat((tmp_pred, logits))
             else:
-                for v_in, cl_in, seq in zip(v_input, clip_input, seq_len):
+                for v_in, cl_in, a_in, seq in zip(v_input, clip_input, a_input, seq_len):
                     v_in = v_in.unsqueeze(0)
                     cl_in = cl_in.unsqueeze(0)
+                    a_in = a_in.unsqueeze(0)
                     seq = torch.tensor([seq]).cuda()
-                    logits, _ = model(v_in, cl_in, seq)
+                    logits, _ = model(v_in, cl_in, a_in, seq)
                     tmp_pred = torch.cat((tmp_pred, logits))
             
             assert tmp_pred.shape[0] == cfg.test_bs
