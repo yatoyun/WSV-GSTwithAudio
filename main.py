@@ -54,11 +54,11 @@ def train(model, train_nloader, train_aloader, test_loader, gt, logger):
     logger.info("Model:{}\n".format(model))
     logger.info("Optimizer:{}\n".format(optimizer))
 
-    initial_auc, initial_ab_auc = test_func(test_loader, model, gt, cfg.dataset, cfg.test_bs)
-    logger.info("Random initialize AUC{}:{:.4f} Anomaly AUC:{:.5f}".format(cfg.metrics, initial_auc, initial_ab_auc))
+    initial_ap, initial_ab_auc = test_func(test_loader, model, gt, cfg.dataset, cfg.test_bs)
+    logger.info("Random initialize AP{}:{:.4f} Anomaly AP:{:.5f}".format(cfg.metrics, initial_ap, initial_ab_auc))
 
     best_model_wts = copy.deepcopy(model.state_dict())
-    best_auc = 0.0
+    best_ap = 0.0
     auc_ab_auc = 0.0
 
     st = time.time()
@@ -82,20 +82,20 @@ def train(model, train_nloader, train_aloader, test_loader, gt, logger):
             log_writer.add_scalar("loss", loss1, epoch)
             turn_point = 1 if not args.fast else cfg.max_epoch
             if epoch >= turn_point and (idx + 1) % 10 == 0:
-                auc, ab_auc = test_func(test_loader, model, gt, cfg.dataset, cfg.test_bs)
-                if auc >= best_auc:
-                    best_auc = auc
+                ap, ab_auc = test_func(test_loader, model, gt, cfg.dataset, cfg.test_bs)
+                if ap >= best_ap:
+                    best_ap = ap
                     auc_ab_auc = ab_auc
                     best_model_wts = copy.deepcopy(model.state_dict())
                     torch.save(
                         model.state_dict(),
                         cfg.save_dir + cfg.model_name + "_current" + ".pkl",
                     )
-                log_writer.add_scalar("AUC", auc, epoch)
+                log_writer.add_scalar("AP", ap, epoch)
 
                 lr = optimizer.param_groups[0]["lr"]
                 logger.info(
-                    "[Epoch:{}/{}, Batch:{}/{}]: loss1:{:.4f} loss2:{:.4f} loss3:{:.4f} loss4:{:.4f} | AP:{:.4f} Anomaly AUC:{:.4f}".format(
+                    "[Epoch:{}/{}, Batch:{}/{}]: loss1:{:.4f} loss2:{:.4f} loss3:{:.4f} loss4:{:.4f} | Highest AP:{:.4f} AP:{:.4f} Anomaly ap:{:.4f}".format(
                         epoch + 1,
                         cfg.max_epoch,
                         idx,
@@ -104,41 +104,42 @@ def train(model, train_nloader, train_aloader, test_loader, gt, logger):
                         loss2,
                         loss3,
                         loss4,
-                        auc,
+                        best_ap,
+                        ap,
                         ab_auc,
                     )
                 )
 
-                logger_wandb.log({"AUC": auc, "Anomaly AUC": ab_auc})
+                logger_wandb.log({"AP": ap, "Anomaly ap": ab_auc})
 
         # scheduler.step()
-        auc, ab_auc = test_func(test_loader, model, gt, cfg.dataset, cfg.test_bs)
-        if auc >= best_auc:
-            best_auc = auc
+        ap, ab_auc = test_func(test_loader, model, gt, cfg.dataset, cfg.test_bs)
+        if ap >= best_ap:
+            best_ap = ap
             auc_ab_auc = ab_auc
             auc_ab_auc = ab_auc
             best_model_wts = copy.deepcopy(model.state_dict())
             torch.save(model.state_dict(), cfg.save_dir + cfg.model_name + "_current" + ".pkl")
-        log_writer.add_scalar("AUC", auc, epoch)
+        log_writer.add_scalar("AP", ap, epoch)
 
         lr = optimizer.param_groups[0]["lr"]
         logger.info(
-            "[Epoch:{}/{}]: lr:{:.5f} | loss1:{:.4f} loss2:{:.4f} loss3:{:.4f} loss4:{:.4f} | AUC:{:.4f} Anomaly AUC:{:.4f}".format(
-                epoch + 1, cfg.max_epoch, lr, loss1, loss2, loss3, loss4, auc, ab_auc
+            "[Epoch:{}/{}]: lr:{:.5f} | loss1:{:.4f} loss2:{:.4f} loss3:{:.4f} loss4:{:.4f} | Highest AP:{:.4f} AP:{:.4f} Anomaly ap:{:.4f}".format(
+                epoch + 1, cfg.max_epoch, lr, loss1, loss2, loss3, loss4, best_ap, ap, ab_auc
             )
         )
 
-        logger_wandb.log({"AUC": auc, "Anomaly AUC": ab_auc})
+        logger_wandb.log({"AP": ap, "Anomaly ap": ab_auc})
 
     time_elapsed = time.time() - st
     model.load_state_dict(best_model_wts)
     torch.save(
         model.state_dict(),
-        cfg.save_dir + cfg.model_name + "_" + str(round(best_auc, 4)).split(".")[1] + ".pkl",
+        cfg.save_dir + cfg.model_name + "_" + str(round(best_ap, 4)).split(".")[1] + ".pkl",
     )
     logger.info(
-        "Training completes in {:.0f}m {:.0f}s | best AUC{}:{:.4f} Anomaly AUC:{:.4f}\n".format(
-            time_elapsed // 60, time_elapsed % 60, cfg.metrics, best_auc, auc_ab_auc
+        "Training completes in {:.0f}m {:.0f}s | best ap{}:{:.4f} Anomaly ap:{:.4f}\n".format(
+            time_elapsed // 60, time_elapsed % 60, cfg.metrics, best_ap, auc_ab_auc
         )
     )
 

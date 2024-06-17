@@ -22,7 +22,7 @@ class XEncoder(nn.Module):
         self.loc_adj = DistanceAdj(gamma, bias)
         self.UR_DMU = WSAD(768, a_nums = a_nums, n_nums = n_nums, dropout = dropout)
         self.hard_atten = HardAttention(k=0.95, num_samples=100, input_dim=d_model//2)
-        self.hard_atten2 = HardAttention(k=0.95, num_samples=100, input_dim=d_model//2)
+        # self.hard_atten2 = HardAttention(k=0.95, num_samples=100, input_dim=d_model//2)
         # self.conv1 = nn.Conv1d(d_model, d_model // 2, kernel_size=1)
         # self.dropout = nn.Dropout(0.05)
 

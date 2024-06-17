@@ -79,8 +79,8 @@ def build_config(dataset):
         # contrasive
         cfg.k = 20
         
-        cfg.lamda = 0.6
-        cfg.alpha = 0.6
+        cfg.lamda = 0.5
+        cfg.alpha = 0.5
         
         # margin
         cfg.margin = 100
