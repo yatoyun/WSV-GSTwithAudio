@@ -87,7 +87,7 @@ def train_func(normal_iter, anomaly_iter, model, optimizer, criterion, criterion
         # loss 1
         loss1 = loss1 + mg_loss
 
-        loss = loss1 + lamda * loss2 + alpha * UR_loss + loss_infoNCE * 0.05
+        loss = loss1 + lamda * loss2 + alpha * UR_loss + loss_infoNCE * 0.03
         
         logger_wandb.log({"loss": loss.item(), "loss1":loss1.item(), "loss2": loss2.item(), "loss3": UR_loss.item(), "loss_infoNCE": loss_infoNCE.item()})
 
