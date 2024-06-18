@@ -79,12 +79,12 @@ def build_config(dataset):
         # contrasive
         cfg.k = 20
         
-        cfg.lamda = 0.6
+        cfg.lamda = 0.8
         cfg.alpha = 0.6
         
         # margin
         cfg.margin = 100
-        cfg.max_epoch = 20
+        cfg.max_epoch = 12
         
         cfg.clip_feat_prefix = '/home/yukaneko/dev/CLIP-TSA_dataset/xd/features/'
         cfg.audio_feat_prefix = '/home/yukaneko/dev/CLIP-TSA_dataset/xd/features/vggish-features/'
