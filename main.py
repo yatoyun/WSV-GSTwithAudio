@@ -38,7 +38,19 @@ def load_checkpoint(model, ckpt_path, logger):
 
 
 def train_epoch(
-    model, train_nloader, train_aloader, test_loader, gt, criterion, criterion2, criterion3, optimizer, cfg, logger, log_writer, logger_wandb
+    model,
+    train_nloader,
+    train_aloader,
+    test_loader,
+    gt,
+    criterion,
+    criterion2,
+    criterion3,
+    optimizer,
+    scheduler,
+    cfg,
+    logger,
+    logger_wandb,
 ):
     """Train model for one epoch."""
     best_auc = 0.0
@@ -59,20 +71,19 @@ def train_epoch(
                 cfg.alpha,
                 cfg.margin,
             )
-            log_writer.add_scalar("loss", loss1, epoch)
 
-            if epoch >= (1 if not cfg.fast else cfg.max_epoch) and (idx + 1) % 10 == 0:
+            if epoch >= (0 if not cfg.fast else cfg.max_epoch) and (idx + 1) % 10 == 0:
                 auc, ab_auc = test_func(test_loader, model, gt, cfg.dataset, cfg.test_bs)
                 if auc > best_auc:
                     best_auc = auc
                     auc_ab_auc = ab_auc
                     torch.save(model.state_dict(), os.path.join(cfg.save_dir, f"{cfg.model_name}_current.pkl"))
 
-                log_writer.add_scalar("AP", auc, epoch)
                 log_training_status(epoch, idx, loss1, loss2, loss3, auc, ab_auc, best_auc, logger)
 
+        # scheduler.step()
         # Evaluate and save best model
-        auc, ab_auc = evaluate_and_save_model(epoch, model, test_loader, gt, cfg, best_auc, logger, log_writer)
+        auc, ab_auc = evaluate_and_save_model(epoch, model, test_loader, optimizer, gt, cfg, best_auc, logger)
         if auc >= best_auc:
             best_auc, auc_ab_auc = auc, ab_auc
 
@@ -81,16 +92,39 @@ def train_epoch(
 
 def log_training_status(epoch, idx, loss1, loss2, loss3, auc, ab_auc, best_auc, logger):
     """Log training status."""
-    logger.info(f"[Epoch:{epoch + 1}/{cfg.max_epoch}, Batch:{idx}]: loss1:{loss1:.4f} loss2:{loss2:.4f} loss3:{loss3:.4f} | BestAP:{best_auc:.4f} AP:{auc:.4f} Anomaly AUC:{ab_auc:.4f}")
+    logger.info(
+        f"[Epoch:{epoch + 1}/{cfg.max_epoch}, Batch:{idx}]: loss1:{loss1:.4f} loss2:{loss2:.4f} loss3:{loss3:.4f} | BestAP:{best_auc:.4f} AP:{auc:.4f} Anomaly AUC:{ab_auc:.4f}"
+    )
 
-def evaluate_and_save_model(epoch, model, test_loader, gt, cfg, best_auc, logger, log_writer):
+
+def evaluate_and_save_model(epoch, model, test_loader, optimizer, gt, cfg, best_auc, logger):
     """Evaluate model and save the best model weights."""
     auc, ab_auc = test_func(test_loader, model, gt, cfg.dataset, cfg.test_bs)
     if auc > best_auc:
         torch.save(model.state_dict(), os.path.join(cfg.save_dir, f"{cfg.model_name}_current.pkl"))
-    log_writer.add_scalar("AP", auc, epoch)
-    logger.info(f"[Epoch:{epoch + 1}/{cfg.max_epoch}]: BestAP:{best_auc:.4f} AP:{auc:.4f} Anomaly AUC:{ab_auc:.4f}")
+    
+    lr1 = optimizer.param_groups[0]["lr"]
+    # lr2 = optimizer.param_groups[1]["lr"]
+    logger.info(f"[Epoch:{epoch + 1}/{cfg.max_epoch}]: lr1:{lr1:.4f} | BestAP:{best_auc:.4f} AP:{auc:.4f} Anomaly AUC:{ab_auc:.4f}")
     return auc, ab_auc
+
+def load_specific_weights(model, checkpoint_path, prefix='self_attention'):
+    checkpoint = torch.load(checkpoint_path)
+    model_dict = model.state_dict()
+    filtered_dict = {k: v for k, v in checkpoint.items() if k.startswith(prefix)}
+
+    model_dict.update(filtered_dict)
+    model.load_state_dict(model_dict)
+
+def load_WSV_GST_model(model, cfg, logger):
+    try:
+        load_specific_weights(model, cfg.WSV_GST_model_path, prefix='self_attention')
+        logger.info(f"Success: Load WSV-GST model")
+    except Exception as e:
+        logger.info(f"Fail: Load WSV-GST model")
+        logger.info(f"Error: {e}")
+        raise e
+
 
 def train_model(cfg, args):
     """Train the model based on the provided configuration and arguments."""
@@ -106,15 +140,42 @@ def train_model(cfg, args):
 
     if args.mode == "train":
         logger_wandb = initialize_wandb(args, cfg)
+        load_WSV_GST_model(model, cfg, logger)
         criterion, criterion2, criterion3 = torch.nn.BCELoss(), torch.nn.KLDivLoss(reduction="batchmean"), AD_Loss()
-        optimizer = optim.Adam(model.parameters(), lr=cfg.lr, weight_decay=0.005)
-        
+        XEncoder_params = list(map(id, model.self_attention.parameters()))
+        main_train_params_filter = filter(lambda p: id(p) not in XEncoder_params, model.parameters())
+        optimizer = optim.Adam(
+            [{
+                "params": model.self_attention.parameters(),
+                "lr": 1e-6,
+            },
+            {
+                "params": main_train_params_filter,
+                "lr": cfg.lr,
+            }]
+        )
+        # optimizer = optim.AdamW(model.parameters(), lr=cfg.lr)
+        scheduler = None #torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
+
+        # logger.info("Model:{}\n".format(model))
         logger.info("Optimizer:{}\n".format(optimizer))
         param = sum(p.numel() for p in model.parameters())
         logger.info("total params:{:.4f}M".format(param / (1000**2)))
-    
+
         best_auc, auc_ab_auc = train_epoch(
-            model, train_nloader, train_aloader, test_loader, gt, criterion, criterion2, criterion3, optimizer, cfg, logger, log_writer, logger_wandb
+            model,
+            train_nloader,
+            train_aloader,
+            test_loader,
+            gt,
+            criterion,
+            criterion2,
+            criterion3,
+            optimizer,
+            scheduler,
+            cfg,
+            logger,
+            logger_wandb,
         )
 
         # Save final model weights
@@ -148,8 +209,22 @@ def get_datasets(cfg):
 
 def get_dataloaders(cfg, train_normal_data, train_anomaly_data, test_data):
     """Create dataloaders for training and testing."""
-    train_nloader = DataLoader(train_normal_data, batch_size=cfg.train_bs, shuffle=True, num_workers=cfg.workers, pin_memory=True, drop_last=True)
-    train_aloader = DataLoader(train_anomaly_data, batch_size=cfg.train_bs, shuffle=True, num_workers=cfg.workers, pin_memory=True, drop_last=True)
+    train_nloader = DataLoader(
+        train_normal_data,
+        batch_size=cfg.train_bs,
+        shuffle=True,
+        num_workers=cfg.workers,
+        pin_memory=True,
+        drop_last=True,
+    )
+    train_aloader = DataLoader(
+        train_anomaly_data,
+        batch_size=cfg.train_bs,
+        shuffle=True,
+        num_workers=cfg.workers,
+        pin_memory=True,
+        drop_last=True,
+    )
     test_loader = DataLoader(test_data, batch_size=cfg.test_bs, shuffle=False, num_workers=cfg.workers, pin_memory=True)
     return train_nloader, train_aloader, test_loader
 
@@ -159,7 +234,9 @@ def initialize_wandb(args, cfg):
     if args.disable_wandb:
         return None
     name = f"{args.dataset}_{args.version}_{cfg.lr}_{cfg.train_bs}_Mem{cfg.a_nums}_{cfg.n_nums}"
-    logger_wandb = wandb.init(project=f"WSV-GST_{args.dataset}(clip+i3d+audio)", name=name, group=f"epoch-{args.version}(clip-pel-ur)")
+    logger_wandb = wandb.init(
+        project=f"WSV-GST_{args.dataset}(clip+i3d+audio)", name=name, group=f"epoch-{args.version}(clip-pel-ur)"
+    )
     logger_wandb.config.update(args)
     logger_wandb.config.update(cfg.__dict__, allow_val_change=True)
     return logger_wandb
@@ -169,7 +246,7 @@ def save_model_weights(cfg, best_auc, logger):
     """Save the model weights to disk."""
     current_best_model_path = os.path.join(cfg.save_dir, f"{cfg.model_name}_current.pkl")
     save_path = os.path.join(cfg.save_dir, f"{cfg.model_name}_{str(round(best_auc, 4)).split('.')[1]}.pkl")
-    
+
     os.system(f"cp {current_best_model_path} {save_path}")
     logger.info(f"Model saved to {save_path}")
 
@@ -204,8 +281,7 @@ if __name__ == "__main__":
 
     savepath = f"./logs/{args.dataset}_{args.version}_{cfg.lr}_{cfg.train_bs}"
     os.makedirs(savepath, exist_ok=True)
-    log_writer = SummaryWriter(savepath)
-
+    
     if cfg.dataset != "xd-violence":
         print(f"{cfg.dataset} is not supported. XD-Violence is only supported for RGB+audio.")
         exit()
