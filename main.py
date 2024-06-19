@@ -179,7 +179,7 @@ def train_model(cfg, args):
         )
 
         # Save final model weights
-        save_model_weights(model, cfg, best_auc, logger)
+        save_model_weights(cfg, best_auc, logger)
 
     elif args.mode == "infer":
         infer_mode(cfg, model, logger, test_loader, gt)
