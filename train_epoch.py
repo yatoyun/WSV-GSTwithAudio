@@ -88,7 +88,8 @@ def train_func(normal_iter, anomaly_iter, model, optimizer, criterion, criterion
 
         loss = loss1 + lamda * loss2 + alpha * UR_loss
         
-        logger_wandb.log({"loss": loss.item(), "loss1":loss1.item(), "loss2": loss2.item(), "loss3": UR_loss.item()})
+        if logger_wandb is not None:
+            logger_wandb.log({"loss": loss.item(), "loss1":loss1.item(), "loss2": loss2.item(), "loss3": UR_loss.item()})
 
 
         optimizer.zero_grad()
