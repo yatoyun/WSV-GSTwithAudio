@@ -88,6 +88,7 @@ def build_config(dataset):
         
         cfg.clip_feat_prefix = '/home/yukaneko/dev/CLIP-TSA_dataset/xd/features/'
         cfg.audio_feat_prefix = '/home/yukaneko/dev/CLIP-TSA_dataset/xd/features/vggish-features/'
+        cfg.flow_feat_prefix = '/home/yukaneko/dev/withAudioAbnormalDetection/WSV-GSTwithAudio/data/xd-i3d/flow'
         cfg.WSV_GST_model_path = './ckpt/WSV_GST_xd_8637.pkl'
         cfg.result_dir = './result/xd/'
 

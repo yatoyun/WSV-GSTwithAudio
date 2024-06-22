@@ -104,6 +104,7 @@ class XDataset(data.Dataset):
         self.is_abnormal = is_abnormal
         self.clip_feat_prefix = cfg.clip_feat_prefix
         self.audio_feat_prefix = cfg.audio_feat_prefix
+        self.flow_feat_prefix = cfg.flow_feat_prefix
         self._parse_list()
 
     def _parse_list(self):
@@ -141,24 +142,30 @@ class XDataset(data.Dataset):
         if self.pre_process and self.max_seqlen == 200 and not self.test_mode:
             clip_path = clip_path.replace('train', 'train-200')
             
-        # load audio
-        audio_path_name = video_name + '__vggish.npy'
-        audio_path = os.path.join(self.audio_feat_prefix, audio_path_name)
+        # # load audio
+        # audio_path_name = video_name + '__vggish.npy'
+        # audio_path = os.path.join(self.audio_feat_prefix, audio_path_name)
+        # if self.pre_process and self.max_seqlen == 200 and not self.test_mode:
+        #     audio_path = audio_path.replace('train', 'train-200')
+
+        # load flow
+        flow_path = os.path.join(self.flow_feat_prefix, self.list[index].strip('\n'))
         if self.pre_process and self.max_seqlen == 200 and not self.test_mode:
-            audio_path = audio_path.replace('train', 'train-200')
+            flow_path = flow_path.replace('train', 'train-200')
         
         clip_feat = np.array(np.load(clip_path), dtype=np.float32)
-        audio_feat = np.array(np.load(audio_path), dtype=np.float32)
+        # audio_feat = np.array(np.load(audio_path), dtype=np.float32)
+        flow_feat = np.array(np.load(flow_path), dtype=np.float32)
         if self.tranform is not None:
             v_feat = self.tranform(v_feat)
             t_feat = self.tranform(t_feat)
         if self.test_mode:
-            return v_feat, clip_feat, audio_feat, label #self.list[index]  #, idx
+            return v_feat, clip_feat, flow_feat, label #self.list[index]  #, idx
         else:
             if not self.pre_process or self.max_seqlen != 200:
                 v_feat = process_feat(v_feat, self.max_seqlen, is_random=False)
                 clip_feat = process_feat(clip_feat, self.max_seqlen, is_random=False)
-            return v_feat, clip_feat, t_feat, audio_feat, label, idx
+            return v_feat, clip_feat, t_feat, flow_feat, label, idx
 
     def __len__(self):
         return len(self.list)
