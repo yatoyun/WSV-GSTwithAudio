@@ -83,7 +83,7 @@ def build_config(dataset):
         cfg.alpha = 0
         
         # margin
-        cfg.margin = 100
+        cfg.margin = 120
         cfg.max_epoch = 2
         
         cfg.clip_feat_prefix = '/home/yukaneko/dev/CLIP-TSA_dataset/xd/features/'
