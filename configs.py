@@ -84,7 +84,7 @@ def build_config(dataset):
         
         # margin
         cfg.margin = 100
-        cfg.max_epoch = 2
+        cfg.max_epoch = 5
         
         cfg.clip_feat_prefix = '/home/yukaneko/dev/CLIP-TSA_dataset/xd/features/'
         cfg.audio_feat_prefix = '/home/yukaneko/dev/CLIP-TSA_dataset/xd/features/vggish-features/'
