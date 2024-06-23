@@ -29,23 +29,25 @@ def test_func(dataloader, model, gt, dataset, test_bs):
         pred = torch.zeros(0)
         ab_pred = torch.zeros(0)
 
-        for i, (v_input, clip_input, a_input, label) in enumerate(dataloader):
+        for i, (v_input, clip_input, a_input, f_input, label) in enumerate(dataloader):
             seq_len = torch.sum(torch.max(torch.abs(v_input), dim=2)[0] > 0, 1)
             v_input = v_input[:, :torch.max(seq_len), :]
             clip_input = clip_input[:, :torch.max(seq_len), :]
             a_input = a_input[:, :torch.max(seq_len), :]
+            f_input = f_input[:, :torch.max(seq_len), :]
             
             clip_input = pad_tensor(clip_input, torch.max(seq_len))
             
             v_input = v_input.float().cuda(non_blocking=True)
             clip_input = clip_input.float().cuda(non_blocking=True)
             a_input = a_input.float().cuda(non_blocking=True)
+            f_input = f_input.float().cuda(non_blocking=True)
             
             if isinstance(label[0], str):
                 label = [1]
 
             if max(seq_len) < 400:
-                logits, _ = model(v_input, clip_input, a_input, seq_len)
+                logits, _ = model(v_input, clip_input, a_input, f_input, seq_len)
                 
                 logits = torch.mean(logits, 0)
                 logits = logits.squeeze(dim=-1)
@@ -55,12 +57,13 @@ def test_func(dataloader, model, gt, dataset, test_bs):
                 
             else:
                 tmp_pred = torch.zeros(0).cuda()
-                for v_in, cl_in, a_in, seq in zip(v_input, clip_input, a_input, seq_len):
+                for v_in, cl_in, a_in, f_in, seq in zip(v_input, clip_input, a_input, f_input, seq_len):
                     v_in = v_in.unsqueeze(0)
                     cl_in = cl_in.unsqueeze(0)
                     a_in = a_in.unsqueeze(0)
+                    f_in = f_in.unsqueeze(0)
                     seq = torch.tensor([seq]).cuda()
-                    logits, _ = model(v_in, cl_in, a_in, seq)
+                    logits, _ = model(v_in, cl_in, a_in, f_in, seq)
                     tmp_pred = torch.cat((tmp_pred, logits))
 
                 tmp_pred = torch.mean(tmp_pred, 0)

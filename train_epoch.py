@@ -26,31 +26,33 @@ def interpolate_frames(x, seq_len):
     return x
 
 
-def to_cuda(v_input, clip_input, t_input, a_input, label, multi_label):
+def to_cuda(v_input, clip_input, t_input, a_input, f_input, label, multi_label):
     v_input = v_input.float().cuda(non_blocking=True)
     clip_input = clip_input.float().cuda(non_blocking=True)
     t_input = t_input.float().cuda(non_blocking=True)
     a_input = a_input.float().cuda(non_blocking=True)
+    f_input = f_input.float().cuda(non_blocking=True)
     label = label.float().cuda(non_blocking=True)
     multi_label = multi_label.cuda(non_blocking=True)
     
-    return v_input, clip_input, t_input, a_input, label, multi_label
+    return v_input, clip_input, t_input, a_input, f_input, label, multi_label
     
 def train_func(normal_iter, anomaly_iter, model, optimizer, criterion, criterion2, criterion3, logger_wandb, lamda=0, alpha=0, margin=100.0):
 # def train_func(dataloader, model, optimizer, criterion, criterion2, lamda=0):
 
-    v_ninput, clip_ninput, t_ninput, a_ninput, nlabel, multi_nlabel = normal_iter #next(normal_iter)
-    v_ainput, clip_ainput, t_ainput, a_ainput, alabel, multi_alabel = anomaly_iter #next(anomaly_iter)
+    v_ninput, clip_ninput, t_ninput, a_ninput, f_ninput, nlabel, multi_nlabel = normal_iter #next(normal_iter)
+    v_ainput, clip_ainput, t_ainput, a_ainput, f_ainput, alabel, multi_alabel = anomaly_iter #next(anomaly_iter)
     with torch.set_grad_enabled(True):
         model.train()
         
-        v_ninput, clip_ninput, t_ninput, a_ninput, nlabel, multi_nlabel = to_cuda(v_ninput, clip_ninput, t_ninput, a_ninput, nlabel, multi_nlabel)
-        v_ainput, clip_ainput, t_ainput, a_ainput, alabel, multi_alabel = to_cuda(v_ainput, clip_ainput, t_ainput, a_ainput, alabel, multi_alabel)
+        v_ninput, clip_ninput, t_ninput, a_ninput, f_ninput, nlabel, multi_nlabel = to_cuda(v_ninput, clip_ninput, t_ninput, a_ninput, f_ninput, nlabel, multi_nlabel)
+        v_ainput, clip_ainput, t_ainput, a_ainput, f_ainput, alabel, multi_alabel = to_cuda(v_ainput, clip_ainput, t_ainput, a_ainput, f_ainput, alabel, multi_alabel)
         # cat
         v_input = torch.cat((v_ninput, v_ainput), 0)
         t_input = torch.cat((t_ninput, t_ainput), 0)
         clip_input = torch.cat((clip_ninput, clip_ainput), 0)
         a_input = torch.cat((a_ninput, a_ainput), 0)
+        f_input = torch.cat((f_ninput, f_ainput), 0)
         label = torch.cat((nlabel, alabel), 0)
         multi_label = torch.cat((multi_nlabel, multi_alabel), 0)
         # seq_len
@@ -58,12 +60,13 @@ def train_func(normal_iter, anomaly_iter, model, optimizer, criterion, criterion
         v_input = v_input[:, :torch.max(seq_len), :]
         clip_input = clip_input[:, :torch.max(seq_len), :]
         a_input = a_input[:, :torch.max(seq_len), :]
+        f_input = f_input[:, :torch.max(seq_len), :]
         
         
         v_input = interpolate_frames(v_input, seq_len)
         clip_input = interpolate_frames(clip_input, seq_len)
         a_input = interpolate_frames(a_input, seq_len)
-        logits, x_k, output_MSNSD = model(v_input, clip_input, a_input, seq_len)
+        logits, x_k, output_MSNSD = model(v_input, clip_input, a_input, f_input, seq_len)
         
         v_feat = x_k["x"]
         x_k["frame"] = logits
