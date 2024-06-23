@@ -42,7 +42,7 @@ class XModel(nn.Module):
         self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / cfg.temp))
         self.dropout = nn.Dropout(cfg.dropout)
         self.dropout2 = nn.Dropout(0.0)
-        self.transformer = Transformer(cfg.out_dim, 2, 4, 128, cfg.out_dim, dropout = 0.5)
+        self.transformer = Transformer(cfg.out_dim, 1, 4, 128, cfg.out_dim, dropout = 0.5)
         self.apply(weight_init)
 
     def forward(self, x, c_x, a_x, f_x, seq_len):
