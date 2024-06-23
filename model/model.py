@@ -43,6 +43,7 @@ class XModel(nn.Module):
         self.dropout = nn.Dropout(cfg.dropout)
         self.dropout2 = nn.Dropout(0.0)
         self.transformer = Transformer(cfg.out_dim, 1, 2, 128, cfg.out_dim, dropout = 0.5)
+        self.transformer2 = Transformer(audio_dim, 1, 1, 64, audio_dim, dropout = 0.1)
         self.apply(weight_init)
 
     def forward(self, x, c_x, a_x, f_x, seq_len):
@@ -53,6 +54,8 @@ class XModel(nn.Module):
         
         x_f = self.gated_fusion(x_e, f_x)
         x = self.dropout2(F.gelu(self.linear2(x_f)))
+
+        a_x = self.transformer2(a_x)
         x = self.gated_fusion2(x, a_x)
 
         x = x.permute(0, 2, 1)
