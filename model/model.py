@@ -41,14 +41,14 @@ class XModel(nn.Module):
         self.classifier = nn.Conv1d(audio_dim, 1, self.t, padding=0)
         self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / cfg.temp))
         self.dropout = nn.Dropout(cfg.dropout)
-        self.dropout2 = nn.Dropout(0.05)
+        self.dropout2 = nn.Dropout(0.0)
         self.transformer = Transformer(cfg.out_dim, 2, 4, 128, cfg.out_dim, dropout = 0.2)
         self.apply(weight_init)
 
     def forward(self, x, c_x, a_x, f_x, seq_len):
         x_e, x_v = self.self_attention(x, c_x, seq_len)
         x_e = x_e.permute(0, 2, 1)
-        f_x = self.dropout2(F.gelu(self.linear(f_x)))
+        f_x = F.gelu(self.linear(f_x))
         f_x = self.transformer(f_x)
         
         x_f = self.gated_fusion(x_e, f_x)

@@ -69,7 +69,7 @@ def build_config(dataset):
         # test settings
         cfg.test_bs = 5
         cfg.smooth = 'slide'  # ['fixed': 8, slide': 3]
-        cfg.kappa = 3  # smooth window
+        cfg.kappa = 4  # smooth window
         cfg.ckpt_path = './ckpt/xd__current.pkl'
         
         # ur dmu
