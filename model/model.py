@@ -38,7 +38,7 @@ class XModel(nn.Module):
         self.classifier = nn.Conv1d(cfg.out_dim, 1, self.t, padding=0)
         self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / cfg.temp))
         self.dropout = nn.Dropout(cfg.dropout)
-        self.transformer = Transformer(cfg.out_dim, 2, 4, 128, cfg.out_dim, dropout = 0.2)
+        self.transformer = Transformer(cfg.out_dim, 1, 2, 128, cfg.out_dim, dropout = 0.1)
         self.apply(weight_init)
 
     def forward(self, x, c_x, a_x, seq_len):

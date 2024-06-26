@@ -25,7 +25,7 @@ def build_config(dataset):
         cfg.test_bs = 10
         cfg.smooth = 'slide'  # ['fixed': 10, slide': 7]
         cfg.kappa = 8  # smooth window
-        cfg.ckpt_path = './ckpt/ucf__8968.pkl'#'./ckpt/ucf__current.pkl'#'./ckpt/ucf__8968.pkl'
+        cfg.ckpt_path = './ckpt/ucf__current.pkl'#'./ckpt/ucf__current.pkl'#'./ckpt/ucf__8968.pkl'
         
         # ur dmu
         cfg.a_nums = 50
@@ -34,15 +34,16 @@ def build_config(dataset):
         # contrasive
         cfg.k = 20
         
-        cfg.lamda = 1.1
-        cfg.alpha = 0.5
+        cfg.lamda = 0
+        cfg.alpha = 0
         
         # margin
         cfg.margin = 100
         cfg.max_epoch = 10
 
         cfg.clip_feat_prefix = '/home/yukaneko/dev/CLIP-TSA_dataset/ucf/features/'
-        
+        cfg.flow_feat_prefix = '/home/yukaneko/dev/withAudioAbnormalDetection/WSV-GSTwithAudio/data/ucf-i3d/flow'
+        cfg.WSV_GST_model_path = './ckpt/WSV-GST_UCF_8968.pkl'
         cfg.result_dir = './result/ucf/'
 
     elif dataset in ['xd', 'xd-violence']:
@@ -123,18 +124,19 @@ def build_config(dataset):
         cfg.a_nums = 50
         cfg.n_nums = 50
         
-        cfg.lamda = 1.2
-        cfg.alpha = 0.4
+        cfg.lamda = 0
+        cfg.alpha = 0
         
         # contrasive
         cfg.k = 20
         
         # margin
-        cfg.margin = 210
-        cfg.max_epoch = 250
+        cfg.margin = 150
+        cfg.max_epoch = 20
         
         cfg.clip_feat_prefix = '/home/yukaneko/dev/CLIP-TSA_dataset/sh/features/'
-        
+        cfg.flow_feat_prefix = '/home/yukaneko/dev/withAudioAbnormalDetection/WSV-GSTwithAudio/data/sh-i3d/flow'
+        cfg.WSV_GST_model_path = './ckpt/WSV-GST_SH__9854.pkl'
         cfg.result_dir = './result/sh/'
 
     # base settings

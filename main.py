@@ -281,9 +281,5 @@ if __name__ == "__main__":
 
     savepath = f"./logs/{args.dataset}_{args.version}_{cfg.lr}_{cfg.train_bs}"
     os.makedirs(savepath, exist_ok=True)
-    
-    if cfg.dataset != "xd-violence":
-        print(f"{cfg.dataset} is not supported. XD-Violence is only supported for RGB+audio.")
-        exit()
 
     train_model(cfg, args)

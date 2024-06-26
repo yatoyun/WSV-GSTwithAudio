@@ -24,6 +24,7 @@ class UCFDataset(data.Dataset):
         self._parse_list()
         self.pre_process = pre_process
         self.clip_feat_prefix = cfg.clip_feat_prefix
+        self.flow_feat_prefix = cfg.flow_feat_prefix
 
     def _parse_list(self):
         self.list = list(open(self.list_file))
@@ -64,7 +65,17 @@ class UCFDataset(data.Dataset):
         if self.pre_process and self.max_seqlen == 200 and not self.test_mode:
             clip_path = clip_path.replace('train', 'train-200')
         
+        # flow
+        flow_file_name = self.list[index].strip('\n').replace('__', '_')
+        if "x264" == self.list[index].strip('\n')[-8:-4]:
+            flow_file_name = flow_file_name.replace("x264", "x264_0")
+            
+        flow_path = os.path.join(self.flow_feat_prefix, flow_file_name)
+        if self.pre_process and self.max_seqlen == 200 and not self.test_mode:
+            flow_path = flow_path.replace('train', 'train-200')
+        
         clip_feat = np.array(np.load(clip_path), dtype=np.float32)
+        flow_feat = np.array(np.load(flow_path), dtype=np.float32)
         
         if self.tranform is not None:
             v_feat = self.tranform(v_feat)
@@ -73,14 +84,14 @@ class UCFDataset(data.Dataset):
         if self.test_mode:
             # mag = np.linalg.norm(v_feat, axis=1)[:, np.newaxis]
             # v_feat = np.concatenate((v_feat,mag),axis = 1)
-            return v_feat, clip_feat, label  # ano_idx , video_name
+            return v_feat, clip_feat, flow_feat, label  # ano_idx , video_name
         else:
             if not self.pre_process or self.max_seqlen != 200:
                 v_feat = process_feat(v_feat, self.max_seqlen, is_random=False)
                 clip_feat = process_feat(clip_feat, self.max_seqlen, is_random=False)
             # mag = np.linalg.norm(v_feat, axis=1)[:, np.newaxis]
             # v_feat = np.concatenate((v_feat,mag),axis = 1)
-            return v_feat, clip_feat, t_feat, label, ano_idx
+            return v_feat, clip_feat, t_feat, flow_feat, label, ano_idx
 
     def __len__(self):
         return len(self.list)
@@ -190,6 +201,7 @@ class SHDataset(data.Dataset):
         self.pre_process = pre_process
         self.is_abnormal = is_abnormal
         self.clip_feat_prefix = cfg.clip_feat_prefix
+        self.flow_feat_prefix = cfg.flow_feat_prefix
         self._parse_list()
 
     def _parse_list(self):
@@ -228,8 +240,14 @@ class SHDataset(data.Dataset):
         clip_path = os.path.join(self.clip_feat_prefix, clip_path_name)
         if self.pre_process and self.max_seqlen == 200 and not self.test_mode:
             clip_path = clip_path.replace('train', 'train-200')
+        
+        # flow
+        flow_path = os.path.join(self.flow_feat_prefix, self.list[index].strip('\n').split(' ')[0])
+        if self.pre_process and self.max_seqlen == 200 and not self.test_mode:
+            flow_path = flow_path.replace('train', 'train-200')
 
         clip_feat = np.array(np.load(clip_path), dtype=np.float32)
+        flow_feat = np.array(np.load(flow_path), dtype=np.float32)
         
         if self.tranform is not None:
             v_feat = self.tranform(v_feat)
@@ -249,10 +267,10 @@ class SHDataset(data.Dataset):
             if not self.pre_process or self.max_seqlen != 200:
                 v_feat = process_feat(v_feat, self.max_seqlen, is_random=False)
                 clip_feat = process_feat(clip_feat, self.max_seqlen, is_random=False)
-            return v_feat, clip_feat, t_feat, label, abn_idx[0]
+            return v_feat, clip_feat, t_feat, flow_feat, label, abn_idx[0]
 
         else:
-            return v_feat, clip_feat, video_name
+            return v_feat, clip_feat, flow_feat, video_name
 
     def __len__(self):
         return len(self.list)
