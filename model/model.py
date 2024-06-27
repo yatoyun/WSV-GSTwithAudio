@@ -51,6 +51,7 @@ class XModel(nn.Module):
         x = x.permute(0, 2, 1)
         x_v["x"] = x
         
+        x = self.dropout(x)
         logits = F.pad(x, (self.t - 1, 0))
         logits = self.classifier(logits)
 

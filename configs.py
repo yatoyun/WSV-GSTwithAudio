@@ -32,7 +32,7 @@ def build_config(dataset):
         cfg.n_nums = 50
         
         # contrasive
-        cfg.k = 20
+        cfg.k = 30
         
         cfg.lamda = 0
         cfg.alpha = 0
@@ -84,7 +84,7 @@ def build_config(dataset):
         cfg.alpha = 0
         
         # margin
-        cfg.margin = 100
+        cfg.margin = 150
         cfg.max_epoch = 2
         
         cfg.clip_feat_prefix = '/home/yukaneko/dev/CLIP-TSA_dataset/xd/features/'

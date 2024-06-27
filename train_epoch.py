@@ -124,7 +124,7 @@ class mgc_loss(torch.nn.Module):
         abn_feamagnitude = output["abn_feamagnitude"]
         loss_con = self.contrastive(torch.norm(abn_feamagnitude, p=1, dim=2), torch.norm(nor_feamagnitude, p=1, dim=2),
                                     1)  # try tp separate normal and abnormal
-        loss_total = 0.001 * (0.03 * loss_con)
+        loss_total = 0.001 * (0.1 * loss_con)
         
         return loss_total
 
