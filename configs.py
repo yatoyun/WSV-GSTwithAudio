@@ -89,7 +89,7 @@ def build_config(dataset):
         cfg.clip_feat_prefix = '/home/yukaneko/dev/CLIP-TSA_dataset/xd/features/'
         cfg.audio_feat_prefix = '/home/yukaneko/dev/CLIP-TSA_dataset/xd/features/vggish-features/'
         cfg.flow_feat_prefix = '/home/yukaneko/dev/withAudioAbnormalDetection/WSV-GSTwithAudio/data/xd-i3d/flow'
-        cfg.WSV_GST_model_path = './ckpt/WSV_GST_xd_8637.pkl'
+        cfg.WSV_GST_model_path = './ckpt/PEL4VAD_xd__8526.pkl'
         cfg.result_dir = './result/xd/'
 
     elif dataset in ['sh', 'SHTech']:
@@ -143,7 +143,7 @@ def build_config(dataset):
     cfg.hid_dim = 128
     cfg.out_dim = 300
     cfg.lr = 3e-5
-    cfg.dropout = 0.5
+    cfg.dropout = 0.1
     cfg.train_bs = 32
     cfg.max_seqlen = 200
     cfg.fast = False

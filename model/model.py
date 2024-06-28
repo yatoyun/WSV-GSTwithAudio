@@ -28,8 +28,6 @@ class XModel(nn.Module):
             dropout=cfg.dropout,
             gamma=cfg.gamma,
             bias=cfg.bias,
-            a_nums=cfg.a_nums,
-            n_nums=cfg.n_nums,
             norm=cfg.norm,
         )
         flow_dim = 1024
@@ -39,15 +37,15 @@ class XModel(nn.Module):
         self.gated_fusion = GatedFeatureFusionWithAttention(cfg.out_dim)
         self.gated_fusion2 = GatedFeatureFusionWithAttention(audio_dim)
         self.classifier = nn.Conv1d(audio_dim, 1, self.t, padding=0)
-        self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / cfg.temp))
+        # self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / cfg.temp))
         self.dropout = nn.Dropout(cfg.dropout)
         self.dropout2 = nn.Dropout(0.0)
-        self.transformer = Transformer(cfg.out_dim, 1, 2, 128, cfg.out_dim, dropout = 0.5)
-        self.transformer2 = Transformer(audio_dim, 1, 2, 64, audio_dim, dropout = 0.1)
+        self.transformer = Transformer(cfg.out_dim, 1, 2, 128, cfg.out_dim, dropout = 0.1)
+        self.transformer2 = Transformer(audio_dim, 1, 2, 64, audio_dim, dropout = 0.01)
         self.apply(weight_init)
 
     def forward(self, x, c_x, a_x, f_x, seq_len):
-        x_e, x_v = self.self_attention(x, c_x, seq_len)
+        x_e, x_v = self.self_attention(x, seq_len)
         x_e = x_e.permute(0, 2, 1)
         f_x = F.gelu(self.linear(f_x))
         f_x = self.transformer(f_x)
