@@ -41,7 +41,7 @@ class XModel(nn.Module):
         self.dropout = nn.Dropout(cfg.dropout)
         self.dropout2 = nn.Dropout(0.0)
         self.transformer = Transformer(cfg.out_dim, 1, 2, 128, cfg.out_dim, dropout = 0.1)
-        self.transformer2 = Transformer(audio_dim, 1, 2, 64, audio_dim, dropout = 0.01)
+        self.transformer2 = Transformer(audio_dim, 1, 2, 64, audio_dim, dropout = 0.02)
         self.apply(weight_init)
 
     def forward(self, x, c_x, a_x, f_x, seq_len):

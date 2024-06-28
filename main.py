@@ -80,7 +80,7 @@ def get_optimizer(cfg, model):
         [
             {
                 "params": model.self_attention.parameters(),
-                "lr": 1e-6,
+                "lr": 1e-7,
             },
             {
                 "params": main_train_params_filter,
