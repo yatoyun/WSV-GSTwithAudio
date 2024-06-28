@@ -6,35 +6,19 @@ import os
 import wandb
 import torch
 import torch.optim as optim
-from torch.utils.data import DataLoader
 from tensorboardX import SummaryWriter
 
 from configs import build_config
 from utils import setup_seed
 from log import get_logger
-from dataset import UCFDataset, XDataset, SHDataset
 from model.model import XModel
 from train_epoch import train_func
 from test import test_func
 from infer import infer_func
 from loss.UR_DMU_loss import AD_Loss
-
-
-def load_checkpoint(model, ckpt_path, logger):
-    """Load model weights from a checkpoint file."""
-    if os.path.isfile(ckpt_path):
-        logger.info(f"Loading pretrained checkpoint from {ckpt_path}.")
-        weight_dict = torch.load(ckpt_path)
-        model_dict = model.state_dict()
-        for name, param in weight_dict.items():
-            if "module" in name:
-                name = ".".join(name.split(".")[1:])
-            if name in model_dict and param.size() == model_dict[name].size():
-                model_dict[name].copy_(param)
-            else:
-                logger.info(f"{name} size mismatch: load {param.size()} given {model_dict[name].size()}")
-    else:
-        logger.info("Pretrained checkpoint file not found.")
+from utils_data import get_datasets, get_dataloaders
+from utils_log import log_training_status, evaluate_and_save_model
+from utils_model import load_checkpoint, load_WSV_GST_model, save_model_weights
 
 
 def train_epoch(
@@ -47,7 +31,6 @@ def train_epoch(
     criterion2,
     criterion3,
     optimizer,
-    scheduler,
     cfg,
     logger,
     logger_wandb,
@@ -79,52 +62,33 @@ def train_epoch(
                     auc_ab_auc = ab_auc
                     torch.save(model.state_dict(), os.path.join(cfg.save_dir, f"{cfg.model_name}_current.pkl"))
 
-                log_training_status(epoch, idx, loss1, loss2, loss3, auc, ab_auc, best_auc, logger)
+                log_training_status(epoch, idx, loss1, loss2, loss3, auc, ab_auc, best_auc, cfg, logger)
 
-        # scheduler.step()
         # Evaluate and save best model
-        auc, ab_auc = evaluate_and_save_model(epoch, model, test_loader, optimizer, gt, cfg, best_auc, logger)
+        auc, ab_auc = evaluate_and_save_model(
+            epoch, model, test_loader, test_func, optimizer, gt, cfg, best_auc, logger
+        )
         if auc >= best_auc:
             best_auc, auc_ab_auc = auc, ab_auc
 
     return best_auc, auc_ab_auc
 
-
-def log_training_status(epoch, idx, loss1, loss2, loss3, auc, ab_auc, best_auc, logger):
-    """Log training status."""
-    logger.info(
-        f"[Epoch:{epoch + 1}/{cfg.max_epoch}, Batch:{idx}]: loss1:{loss1:.4f} loss2:{loss2:.4f} loss3:{loss3:.4f} | BestAP:{best_auc:.4f} AP:{auc:.4f} Anomaly AUC:{ab_auc:.4f}"
+def get_optimizer(cfg, model):
+    XEncoder_params = list(map(id, model.self_attention.parameters()))
+    main_train_params_filter = filter(lambda p: id(p) not in XEncoder_params, model.parameters())
+    optimizer = optim.Adam(
+        [
+            {
+                "params": model.self_attention.parameters(),
+                "lr": 1e-6,
+            },
+            {
+                "params": main_train_params_filter,
+                "lr": cfg.lr,
+            },
+        ]
     )
-
-
-def evaluate_and_save_model(epoch, model, test_loader, optimizer, gt, cfg, best_auc, logger):
-    """Evaluate model and save the best model weights."""
-    auc, ab_auc = test_func(test_loader, model, gt, cfg.dataset, cfg.test_bs)
-    if auc > best_auc:
-        torch.save(model.state_dict(), os.path.join(cfg.save_dir, f"{cfg.model_name}_current.pkl"))
-    
-    lr1 = optimizer.param_groups[0]["lr"]
-    # lr2 = optimizer.param_groups[1]["lr"]
-    logger.info(f"[Epoch:{epoch + 1}/{cfg.max_epoch}]: lr1:{lr1:.4f} | BestAP:{best_auc:.4f} AP:{auc:.4f} Anomaly AUC:{ab_auc:.4f}")
-    return auc, ab_auc
-
-def load_specific_weights(model, checkpoint_path, prefix='self_attention'):
-    checkpoint = torch.load(checkpoint_path)
-    model_dict = model.state_dict()
-    filtered_dict = {k: v for k, v in checkpoint.items() if k.startswith(prefix)}
-
-    model_dict.update(filtered_dict)
-    model.load_state_dict(model_dict)
-
-def load_WSV_GST_model(model, cfg, logger):
-    try:
-        load_specific_weights(model, cfg.WSV_GST_model_path, prefix='self_attention')
-        logger.info(f"Success: Load WSV-GST model")
-    except Exception as e:
-        logger.info(f"Fail: Load WSV-GST model")
-        logger.info(f"Error: {e}")
-        raise e
-
+    return optimizer
 
 def train_model(cfg, args):
     """Train the model based on the provided configuration and arguments."""
@@ -142,21 +106,8 @@ def train_model(cfg, args):
         logger_wandb = initialize_wandb(args, cfg)
         load_WSV_GST_model(model, cfg, logger)
         criterion, criterion2, criterion3 = torch.nn.BCELoss(), torch.nn.KLDivLoss(reduction="batchmean"), AD_Loss()
-        XEncoder_params = list(map(id, model.self_attention.parameters()))
-        main_train_params_filter = filter(lambda p: id(p) not in XEncoder_params, model.parameters())
-        optimizer = optim.Adam(
-            [{
-                "params": model.self_attention.parameters(),
-                "lr": 1e-6,
-            },
-            {
-                "params": main_train_params_filter,
-                "lr": cfg.lr,
-            }]
-        )
-        # optimizer = optim.AdamW(model.parameters(), lr=cfg.lr)
-        scheduler = None #torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
-
+        
+        optimizer = get_optimizer(cfg, model)
         # logger.info("Model:{}\n".format(model))
         logger.info("Optimizer:{}\n".format(optimizer))
         param = sum(p.numel() for p in model.parameters())
@@ -172,7 +123,6 @@ def train_model(cfg, args):
             criterion2,
             criterion3,
             optimizer,
-            scheduler,
             cfg,
             logger,
             logger_wandb,
@@ -188,47 +138,6 @@ def train_model(cfg, args):
         raise RuntimeError("Invalid mode!")
 
 
-def get_datasets(cfg):
-    """Retrieve the datasets based on the configuration."""
-    if cfg.dataset == "ucf-crime":
-        train_normal_data = UCFDataset(cfg, test_mode=False, pre_process=True)
-        train_anomaly_data = UCFDataset(cfg, test_mode=False, is_abnormal=True, pre_process=True)
-        test_data = UCFDataset(cfg, test_mode=True)
-    elif cfg.dataset == "xd-violence":
-        train_normal_data = XDataset(cfg, test_mode=False, pre_process=True)
-        train_anomaly_data = XDataset(cfg, test_mode=False, is_abnormal=True, pre_process=True)
-        test_data = XDataset(cfg, test_mode=True)
-    elif cfg.dataset == "shanghaiTech":
-        train_normal_data = SHDataset(cfg, test_mode=False, pre_process=True)
-        train_anomaly_data = SHDataset(cfg, test_mode=False, is_abnormal=True, pre_process=True)
-        test_data = SHDataset(cfg, test_mode=True)
-    else:
-        raise RuntimeError(f"Dataset {cfg.dataset} is not supported!")
-    return train_normal_data, train_anomaly_data, test_data
-
-
-def get_dataloaders(cfg, train_normal_data, train_anomaly_data, test_data):
-    """Create dataloaders for training and testing."""
-    train_nloader = DataLoader(
-        train_normal_data,
-        batch_size=cfg.train_bs,
-        shuffle=True,
-        num_workers=cfg.workers,
-        pin_memory=True,
-        drop_last=True,
-    )
-    train_aloader = DataLoader(
-        train_anomaly_data,
-        batch_size=cfg.train_bs,
-        shuffle=True,
-        num_workers=cfg.workers,
-        pin_memory=True,
-        drop_last=True,
-    )
-    test_loader = DataLoader(test_data, batch_size=cfg.test_bs, shuffle=False, num_workers=cfg.workers, pin_memory=True)
-    return train_nloader, train_aloader, test_loader
-
-
 def initialize_wandb(args, cfg):
     """Initialize Weights and Biases logging."""
     if args.disable_wandb:
@@ -240,15 +149,6 @@ def initialize_wandb(args, cfg):
     logger_wandb.config.update(args)
     logger_wandb.config.update(cfg.__dict__, allow_val_change=True)
     return logger_wandb
-
-
-def save_model_weights(cfg, best_auc, logger):
-    """Save the model weights to disk."""
-    current_best_model_path = os.path.join(cfg.save_dir, f"{cfg.model_name}_current.pkl")
-    save_path = os.path.join(cfg.save_dir, f"{cfg.model_name}_{str(round(best_auc, 4)).split('.')[1]}.pkl")
-
-    os.system(f"cp {current_best_model_path} {save_path}")
-    logger.info(f"Model saved to {save_path}")
 
 
 def infer_mode(cfg, model, logger, test_loader, gt):
@@ -281,7 +181,7 @@ if __name__ == "__main__":
 
     savepath = f"./logs/{args.dataset}_{args.version}_{cfg.lr}_{cfg.train_bs}"
     os.makedirs(savepath, exist_ok=True)
-    
+
     if cfg.dataset != "xd-violence":
         print(f"{cfg.dataset} is not supported. XD-Violence is only supported for RGB+audio.")
         exit()
