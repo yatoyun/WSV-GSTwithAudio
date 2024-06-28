@@ -1,8 +1,9 @@
 import torch.utils.data as data
-from utils import process_feat
 import numpy as np
 import os
 
+def process_feat(feat, max_seqlen, is_random=False):
+    return feat
 
 class UCFDataset(data.Dataset):
     def __init__(self, cfg, transform=None, test_mode=False, is_abnormal=False, pre_process=False):
