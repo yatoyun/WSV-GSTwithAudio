@@ -82,7 +82,7 @@ def train_func(normal_iter, anomaly_iter, model, optimizer, criterion, criterion
 
         loss1 = CLAS2(logits, label, seq_len, criterion)
         
-        UR_loss = criterion3(x_k, label, seq_len)[0]
+        UR_loss = torch.tensor(0.0) # criterion3(x_k, label, seq_len)[0]
         # mgc loss
         loss_criterion = mgc_loss(margin)
         mg_loss = loss_criterion(output_MSNSD)

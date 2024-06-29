@@ -7,6 +7,7 @@ import torch.nn.functional as F
 
 from .modules import XEncoder
 from .UR_DMU.translayer import Transformer
+from .HyperVD.hyper_vd_model import Model as HyperVDModel
 from .cross_attention import GatedFeatureFusionWithAttention
 
 def weight_init(m):
@@ -20,7 +21,7 @@ class XModel(nn.Module):
         self.t = cfg.t_step
         self.k = cfg.k
         self.self_attention = XEncoder(
-            d_model=cfg.feat_dim,
+            d_model=cfg.feat_dimRGB,
             hid_dim=cfg.hid_dim,
             out_dim=cfg.out_dim,
             n_heads=cfg.head_num,
@@ -37,14 +38,14 @@ class XModel(nn.Module):
         self.linear = nn.Linear(flow_dim, cfg.out_dim)
         self.linear2 = nn.Linear(cfg.out_dim, audio_dim)
         self.gated_fusion = GatedFeatureFusionWithAttention(cfg.out_dim)
-        self.gated_fusion2 = GatedFeatureFusionWithAttention(audio_dim)
-        self.classifier = nn.Conv1d(audio_dim, 1, self.t, padding=0)
-        self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / cfg.temp))
+        # self.gated_fusion2 = GatedFeatureFusionWithAttention(audio_dim)
+        # self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / cfg.temp))
         self.dropout = nn.Dropout(cfg.dropout)
         self.dropout2 = nn.Dropout(0.0)
         self.transformer = Transformer(cfg.out_dim, 1, 2, 128, cfg.out_dim, dropout = 0.5)
         self.transformer2 = Transformer(audio_dim, 1, 2, 64, audio_dim, dropout = 0.1)
         self.apply(weight_init)
+        self.hyper_vd = HyperVDModel(cfg)
 
     def forward(self, x, c_x, a_x, f_x, seq_len):
         x_e, x_v = self.self_attention(x, c_x, seq_len)
@@ -56,19 +57,14 @@ class XModel(nn.Module):
         x = self.dropout2(F.gelu(self.linear2(x_f)))
 
         a_x = self.transformer2(a_x)
-        x = self.gated_fusion2(x, a_x)
-
-        x = x.permute(0, 2, 1)
+        
+        x = torch.cat([x, a_x], dim=-1)
+        logits, x = self.hyper_vd(x, seq_len)
+        logits = torch.sigmoid(logits)
         x_v["x"] = x
         
-        logits = F.pad(x, (self.t - 1, 0))
-        logits = self.classifier(logits)
-
-        logits = logits.permute(0, 2, 1)
-        logits = torch.sigmoid(logits)
-        
         if self.training:
-            output = MSNSD(x_v["x"].permute(0,2,1), logits, x.shape[0], x.shape[0] // 2, self.dropout, 1, k=self.k)
+            output = MSNSD(x_v["x"], logits, x.shape[0], x.shape[0] // 2, self.dropout, 1, k=self.k)
             return logits, x_v, output
 
         return logits, x_v

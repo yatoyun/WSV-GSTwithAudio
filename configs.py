@@ -86,6 +86,20 @@ def build_config(dataset):
         cfg.margin = 120
         cfg.max_epoch = 2
         
+        # hyper vd
+        cfg.model = "HyboNet"
+        cfg.feat_dim = 256
+        cfg.manifold = 'Lorentz'
+        cfg.c = None
+        cfg.num_layers = 2
+        cfg.act = "leaky_relu"
+        cfg.dim = 32
+        cfg.bias = 1
+        cfg.use_att = 0
+        cfg.local_agg = 0
+        cfg.tie_weight = 0
+        cfg.num_classes = 1
+        
         cfg.clip_feat_prefix = '/home/yukaneko/dev/CLIP-TSA_dataset/xd/features/'
         cfg.audio_feat_prefix = '/home/yukaneko/dev/CLIP-TSA_dataset/xd/features/vggish-features/'
         cfg.flow_feat_prefix = '/home/yukaneko/dev/withAudioAbnormalDetection/WSV-GSTwithAudio/data/xd-i3d/flow'
@@ -138,7 +152,7 @@ def build_config(dataset):
         cfg.result_dir = './result/sh/'
 
     # base settings
-    cfg.feat_dim = 1024
+    cfg.feat_dimRGB = 1024
     cfg.head_num = 1
     cfg.hid_dim = 128
     cfg.out_dim = 300
