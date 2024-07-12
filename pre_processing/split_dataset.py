@@ -3,8 +3,8 @@ import os
 from tqdm import tqdm
 
 # Replace with the actual directory path
-input_directory = "/home/yukaneko/dev/ShanghaiTech_features/SH_Train_ten_crop_i3d"
-output_directory = "../data/sh-i3d/rtfm/train"
+input_directory = "/home/yukaneko/dev/ShanghaiTech_features/SH_Test_ten_crop_i3d"
+output_directory = "../data/sh-i3d/flow/test"
 
 os.makedirs(output_directory, exist_ok=True)
 
@@ -16,7 +16,7 @@ for filename in tqdm(os.listdir(input_directory)):
         data = np.load(filepath)
 
         # Extract the first 1024 dimensions
-        rgb_data = data[:, :, :1024]
+        rgb_data = data[:, :, 1024:]
 
         # Save each slice [:, i, :] as a new file
         for i in range(10):
