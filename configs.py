@@ -32,10 +32,10 @@ def build_config(dataset):
         cfg.n_nums = 50
         
         # contrasive
-        cfg.k = 30
+        cfg.k = 20
         
-        cfg.lamda = 0
-        cfg.alpha = 0
+        cfg.lamda = 0.9
+        cfg.alpha = 0.5
         
         # margin
         cfg.margin = 100

@@ -1,13 +1,14 @@
 
-import torch
 import numpy as np
-from torch import nn
-import torch.nn.init as torch_init
+import torch
 import torch.nn.functional as F
+import torch.nn.init as torch_init
+from torch import nn
 
+from .cross_attention import GatedFeatureFusionWithAttention
 from .modules import XEncoder
 from .UR_DMU.translayer import Transformer
-from .cross_attention import GatedFeatureFusionWithAttention
+
 
 def weight_init(m):
     classname = m.__class__.__name__
@@ -49,7 +50,7 @@ class XModel(nn.Module):
         
         x = self.gated_fusion(x_e, a_x)
         x = x.permute(0, 2, 1)
-        x_v["x"] = x
+        x_t = x
         
         x = self.dropout(x)
         logits = F.pad(x, (self.t - 1, 0))
@@ -59,7 +60,7 @@ class XModel(nn.Module):
         logits = torch.sigmoid(logits)
         
         if self.training:
-            output = MSNSD(x_v["x"].permute(0,2,1), logits, x.shape[0], x.shape[0] // 2, self.dropout, 1, k=self.k)
+            output = MSNSD(x_t.permute(0,2,1), logits, x.shape[0], x.shape[0] // 2, self.dropout, 1, k=self.k)
             return logits, x_v, output
 
         return logits, x_v

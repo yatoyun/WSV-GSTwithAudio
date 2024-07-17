@@ -1,23 +1,24 @@
-import time
-import numpy as np
 import argparse
 import copy
 import os
-import wandb
+import time
+from test import test_func
+
+import numpy as np
 import torch
 import torch.optim as optim
-from torch.utils.data import DataLoader
 from tensorboardX import SummaryWriter
+from torch.utils.data import DataLoader
 
+import wandb
 from configs import build_config
-from utils import setup_seed
+from dataset import SHDataset, UCFDataset, XDataset
+from infer import infer_func
 from log import get_logger
-from dataset import UCFDataset, XDataset, SHDataset
+from loss.UR_DMU_loss import AD_Loss
 from model.model import XModel
 from train_epoch import train_func
-from test import test_func
-from infer import infer_func
-from loss.UR_DMU_loss import AD_Loss
+from utils import setup_seed
 
 
 def load_checkpoint(model, ckpt_path, logger):
