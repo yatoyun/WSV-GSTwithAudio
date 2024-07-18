@@ -39,7 +39,7 @@ class XModel(nn.Module):
         self.classifier = nn.Conv1d(cfg.out_dim, 1, self.t, padding=0)
         self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / cfg.temp))
         self.dropout = nn.Dropout(cfg.dropout)
-        self.transformer = Transformer(cfg.out_dim, 1, 2, 128, cfg.out_dim, dropout = 0.1)
+        self.transformer = Transformer(cfg.out_dim, 1, 2, 128, cfg.out_dim, dropout = 0.2)
         self.apply(weight_init)
 
     def forward(self, x, c_x, a_x, seq_len):
@@ -48,7 +48,7 @@ class XModel(nn.Module):
         a_x = F.gelu(self.linear(a_x))
         a_x = self.transformer(a_x)
         
-        x = self.gated_fusion(x_e, a_x)
+        x = self.gated_fusion(x_e, a_x) + x_e
         x = x.permute(0, 2, 1)
         x_t = x
         

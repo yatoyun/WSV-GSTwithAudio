@@ -77,7 +77,7 @@ def train_func(normal_iter, anomaly_iter, model, optimizer, criterion, criterion
         
         ground_truth = gen_label(video_labels)
         loss2 = KLV_loss(v2t_logits, ground_truth, criterion2)
-        loss2 = torch.tensor(0.0)
+        # loss2 = torch.tensor(0.0)
 
         loss1 = CLAS2(logits, label, seq_len, criterion)
         

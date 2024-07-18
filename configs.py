@@ -24,7 +24,7 @@ def build_config(dataset):
         # test settings
         cfg.test_bs = 10
         cfg.smooth = 'slide'  # ['fixed': 10, slide': 7]
-        cfg.kappa = 8  # smooth window
+        cfg.kappa = 11  # smooth window
         cfg.ckpt_path = './ckpt/ucf__current.pkl'#'./ckpt/ucf__current.pkl'#'./ckpt/ucf__8968.pkl'
         
         # ur dmu
@@ -34,7 +34,7 @@ def build_config(dataset):
         # contrasive
         cfg.k = 20
         
-        cfg.lamda = 0.9
+        cfg.lamda = 1.1
         cfg.alpha = 0.5
         
         # margin

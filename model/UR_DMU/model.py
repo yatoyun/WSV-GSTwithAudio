@@ -5,6 +5,7 @@ from torch.nn.modules.module import Module
 from .memory import Memory_Unit
 from .translayer import Transformer
 
+
 def norm(data):
     l2 = torch.norm(data, p = 2, dim = -1, keepdim = True)
     return torch.div(data, l2)
@@ -35,8 +36,8 @@ class WSAD(Module):
         self.Amemory = Memory_Unit(nums=a_nums, dim=512)
         self.Nmemory = Memory_Unit(nums=n_nums, dim=512)
         self.selfatt = Transformer(512, 2, 4, 128, 512, dropout = dropout)
-        self.encoder_mu = nn.Sequential(nn.Linear(512, 512))
-        self.encoder_var = nn.Sequential(nn.Linear(512, 512))
+        self.encoder_mu = nn.Sequential(nn.Linear(512, 512), nn.ReLU())
+        self.encoder_var = nn.Sequential(nn.Linear(512, 512), nn.ReLU())
         self.relu = nn.ReLU()
         
     def _reparameterize(self, mu, logvar):
@@ -70,13 +71,13 @@ class WSAD(Module):
             A_Natt, A_Naug = self.Amemory(N_x) ###bt,btd,   normal video --->>>>> Anomaly memeory   all 0 [0,0,0,0,0,...,0]
             N_att, N_aug = self.Nmemory(N_x)   ###bt,btd,   normal video --->>>>> Normal memeory    all 1 [1,1,1,1,1,...,1]
     
-            _, A_index = torch.topk(A_att, t//16 + 1, dim=-1)
+            _, A_index = torch.topk(A_att, 20, dim=-1)
             negative_ax = torch.gather(A_x, 1, A_index.unsqueeze(2).expand([-1, -1, x.size(-1)])).mean(1).reshape(b//2,n,-1).mean(1)
             
-            _, N_index = torch.topk(N_att, t//16 + 1, dim=-1)
+            _, N_index = torch.topk(N_att, 20, dim=-1)
             anchor_nx=torch.gather(N_x, 1, N_index.unsqueeze(2).expand([-1, -1, x.size(-1)])).mean(1).reshape(b//2,n,-1).mean(1)
 
-            _, P_index = torch.topk(N_Aatt, t//16 + 1, dim=-1)
+            _, P_index = torch.topk(N_Aatt, 20, dim=-1)
             positivte_nx = torch.gather(A_x, 1, P_index.unsqueeze(2).expand([-1, -1, x.size(-1)])).mean(1).reshape(b//2,n,-1).mean(1)
                
             triplet_margin_loss = self.triplet(norm(anchor_nx), norm(positivte_nx), norm(negative_ax))
