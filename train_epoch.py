@@ -26,50 +26,59 @@ def interpolate_frames(x, seq_len):
     return x
 
 
-def to_cuda(v_input, clip_input, t_input, label, multi_label):
+def to_cuda(v_input, clip_input, t_input, a_input, f_input, label, multi_label):
     v_input = v_input.float().cuda(non_blocking=True)
     clip_input = clip_input.float().cuda(non_blocking=True)
     t_input = t_input.float().cuda(non_blocking=True)
+    a_input = a_input.float().cuda(non_blocking=True)
+    f_input = f_input.float().cuda(non_blocking=True)
     label = label.float().cuda(non_blocking=True)
     multi_label = multi_label.cuda(non_blocking=True)
     
-    return v_input, clip_input, t_input, label, multi_label
+    return v_input, clip_input, t_input, a_input, f_input, label, multi_label
     
 def train_func(normal_iter, anomaly_iter, model, optimizer, criterion, criterion2, criterion3, logger_wandb, lamda=0, alpha=0, margin=100.0):
-    v_ninput, clip_ninput, t_ninput, nlabel, multi_nlabel = normal_iter #next(normal_iter)
-    v_ainput, clip_ainput, t_ainput, alabel, multi_alabel = anomaly_iter #next(anomaly_iter)
+# def train_func(dataloader, model, optimizer, criterion, criterion2, lamda=0):
+
+    v_ninput, clip_ninput, t_ninput, a_ninput, f_ninput, nlabel, multi_nlabel = normal_iter #next(normal_iter)
+    v_ainput, clip_ainput, t_ainput, a_ainput, f_ainput, alabel, multi_alabel = anomaly_iter #next(anomaly_iter)
     with torch.set_grad_enabled(True):
         model.train()
         
-        v_ninput, clip_ninput, t_ninput, nlabel, multi_nlabel = to_cuda(v_ninput, clip_ninput, t_ninput, nlabel, multi_nlabel)
-        v_ainput, clip_ainput, t_ainput, alabel, multi_alabel = to_cuda(v_ainput, clip_ainput, t_ainput, alabel, multi_alabel)
+        v_ninput, clip_ninput, t_ninput, a_ninput, f_ninput, nlabel, multi_nlabel = to_cuda(v_ninput, clip_ninput, t_ninput, a_ninput, f_ninput, nlabel, multi_nlabel)
+        v_ainput, clip_ainput, t_ainput, a_ainput, f_ainput, alabel, multi_alabel = to_cuda(v_ainput, clip_ainput, t_ainput, a_ainput, f_ainput, alabel, multi_alabel)
         # cat
         v_input = torch.cat((v_ninput, v_ainput), 0)
         t_input = torch.cat((t_ninput, t_ainput), 0)
         clip_input = torch.cat((clip_ninput, clip_ainput), 0)
+        a_input = torch.cat((a_ninput, a_ainput), 0)
+        f_input = torch.cat((f_ninput, f_ainput), 0)
         label = torch.cat((nlabel, alabel), 0)
         multi_label = torch.cat((multi_nlabel, multi_alabel), 0)
         # seq_len
         seq_len = torch.sum(torch.max(torch.abs(v_input), dim=2)[0] > 0, 1)
         v_input = v_input[:, :torch.max(seq_len), :]
         clip_input = clip_input[:, :torch.max(seq_len), :]
+        a_input = a_input[:, :torch.max(seq_len), :]
+        f_input = f_input[:, :torch.max(seq_len), :]
         
         
         v_input = interpolate_frames(v_input, seq_len)
         clip_input = interpolate_frames(clip_input, seq_len)
-
-        logits, x_k, output_MSNSD = model(v_input, clip_input, seq_len)
+        a_input = interpolate_frames(a_input, seq_len)
+        logits, x_k, output_MSNSD = model(v_input, clip_input, a_input, f_input, seq_len)
         
         v_feat = x_k["x"]
         x_k["frame"] = logits
         
         # Prompt-Enhanced Learning
-        logit_scale = model.logit_scale.exp()
-        video_feat, token_feat, video_labels = get_cas(v_feat, t_input, logits, multi_label)
-        v2t_logits, v2v_logits = create_logits(video_feat, token_feat, logit_scale)
+        # logit_scale = model.logit_scale.exp()
+        # video_feat, token_feat, video_labels = get_cas(v_feat, t_input, logits, multi_label)
+        # v2t_logits, v2v_logits = create_logits(video_feat, token_feat, logit_scale)
         
-        ground_truth = gen_label(video_labels)
-        loss2 = KLV_loss(v2t_logits, ground_truth, criterion2)
+        # ground_truth = gen_label(video_labels)
+        # loss2 = KLV_loss(v2t_logits, ground_truth, criterion2)
+        loss2 = torch.tensor(0.0)
 
         loss1 = CLAS2(logits, label, seq_len, criterion)
         
@@ -83,7 +92,8 @@ def train_func(normal_iter, anomaly_iter, model, optimizer, criterion, criterion
 
         loss = loss1 + lamda * loss2 + alpha * UR_loss
         
-        logger_wandb.log({"loss": loss.item(), "loss1":loss1.item(), "loss2": loss2.item(), "loss3": UR_loss.item()})
+        if logger_wandb is not None:
+            logger_wandb.log({"loss": loss.item(), "loss1":loss1.item(), "loss2": loss2.item(), "loss3": UR_loss.item()})
 
 
         optimizer.zero_grad()
@@ -117,7 +127,7 @@ class mgc_loss(torch.nn.Module):
         abn_feamagnitude = output["abn_feamagnitude"]
         loss_con = self.contrastive(torch.norm(abn_feamagnitude, p=1, dim=2), torch.norm(nor_feamagnitude, p=1, dim=2),
                                     1)  # try tp separate normal and abnormal
-        loss_total = 0.001 * (0.01 * loss_con)
+        loss_total = 0.001 * (0.03 * loss_con)
         
         return loss_total
 

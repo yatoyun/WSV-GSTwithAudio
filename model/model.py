@@ -1,8 +1,13 @@
 
 import torch
+import numpy as np
+from torch import nn
 import torch.nn.init as torch_init
+import torch.nn.functional as F
 
-from .modules import *
+from .modules import XEncoder
+from .UR_DMU.translayer import Transformer
+from .cross_attention import GatedFeatureFusionWithAttention
 
 def weight_init(m):
     classname = m.__class__.__name__
@@ -27,14 +32,36 @@ class XModel(nn.Module):
             n_nums=cfg.n_nums,
             norm=cfg.norm,
         )
-        self.classifier = nn.Conv1d(cfg.out_dim, 1, self.t, padding=0)
+        flow_dim = 1024
+        audio_dim = 128
+        self.linear = nn.Linear(flow_dim, cfg.out_dim)
+        self.linear2 = nn.Linear(cfg.out_dim, audio_dim)
+        self.gated_fusion = GatedFeatureFusionWithAttention(cfg.out_dim)
+        self.gated_fusion2 = GatedFeatureFusionWithAttention(audio_dim)
+        self.classifier = nn.Conv1d(audio_dim, 1, self.t, padding=0)
         self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / cfg.temp))
         self.dropout = nn.Dropout(cfg.dropout)
+        self.dropout2 = nn.Dropout(0.0)
+        self.transformer = Transformer(cfg.out_dim, 1, 2, 128, cfg.out_dim, dropout = 0.5)
+        self.transformer2 = Transformer(audio_dim, 1, 2, 64, audio_dim, dropout = 0.1)
         self.apply(weight_init)
 
-    def forward(self, x, c_x, seq_len):
+    def forward(self, x, c_x, a_x, f_x, seq_len):
         x_e, x_v = self.self_attention(x, c_x, seq_len)
-        logits = F.pad(x_e, (self.t - 1, 0))
+        x_e = x_e.permute(0, 2, 1)
+        f_x = F.gelu(self.linear(f_x))
+        f_x = self.transformer(f_x)
+        
+        x_f = self.gated_fusion(x_e, f_x)
+        x = self.dropout2(F.gelu(self.linear2(x_f)))
+
+        a_x = self.transformer2(a_x)
+        x = self.gated_fusion2(x, a_x)
+
+        x = x.permute(0, 2, 1)
+        x_v["x"] = x
+        
+        logits = F.pad(x, (self.t - 1, 0))
         logits = self.classifier(logits)
 
         logits = logits.permute(0, 2, 1)

@@ -30,7 +30,7 @@ class XEncoder(nn.Module):
         mask = self.get_mask(self.win_size, x.shape[1], seq_len)
         
         x_h = self.hard_atten(c_x)
-        
+
         x = x + self.self_attn(x, mask, adj)
         x_t = x
         
