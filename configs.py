@@ -79,12 +79,12 @@ def build_config(dataset):
         # contrasive
         cfg.k = 20
         
-        cfg.lamda = 0
-        cfg.alpha = 0
+        cfg.lamda = 1.1
+        cfg.alpha = 0.5
         
         # margin
         cfg.margin = 120
-        cfg.max_epoch = 2
+        cfg.max_epoch = 10
         
         cfg.clip_feat_prefix = '/home/yukaneko/dev/CLIP-TSA_dataset/xd/features/'
         cfg.audio_feat_prefix = '/home/yukaneko/dev/CLIP-TSA_dataset/xd/features/vggish-features/'
@@ -142,7 +142,7 @@ def build_config(dataset):
     cfg.head_num = 1
     cfg.hid_dim = 128
     cfg.out_dim = 300
-    cfg.lr = 3e-5
+    cfg.lr = 3e-4
     cfg.dropout = 0.5
     cfg.train_bs = 32
     cfg.max_seqlen = 200

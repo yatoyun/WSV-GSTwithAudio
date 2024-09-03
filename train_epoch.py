@@ -1,6 +1,8 @@
 import torch
-from utils import *
+
 from loss.loss import *
+from utils import *
+
 
 def interpolate_frames(x, seq_len):
     bs, max_len, _ = x.size()
@@ -68,17 +70,16 @@ def train_func(normal_iter, anomaly_iter, model, optimizer, criterion, criterion
         a_input = interpolate_frames(a_input, seq_len)
         logits, x_k, output_MSNSD = model(v_input, clip_input, a_input, f_input, seq_len)
         
-        v_feat = x_k["x"]
+        v_feat = x_k["v_feat"]
         x_k["frame"] = logits
         
         # Prompt-Enhanced Learning
-        # logit_scale = model.logit_scale.exp()
-        # video_feat, token_feat, video_labels = get_cas(v_feat, t_input, logits, multi_label)
-        # v2t_logits, v2v_logits = create_logits(video_feat, token_feat, logit_scale)
+        logit_scale = model.logit_scale.exp()
+        video_feat, token_feat, video_labels = get_cas(v_feat, t_input, logits, multi_label)
+        v2t_logits, v2v_logits = create_logits(video_feat, token_feat, logit_scale)
         
-        # ground_truth = gen_label(video_labels)
-        # loss2 = KLV_loss(v2t_logits, ground_truth, criterion2)
-        loss2 = torch.tensor(0.0)
+        ground_truth = gen_label(video_labels)
+        loss2 = KLV_loss(v2t_logits, ground_truth, criterion2)
 
         loss1 = CLAS2(logits, label, seq_len, criterion)
         

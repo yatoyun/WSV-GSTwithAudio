@@ -1,23 +1,24 @@
-import time
-import numpy as np
 import argparse
 import copy
 import os
-import wandb
+import time
+from test import test_func
+
+import numpy as np
 import torch
 import torch.optim as optim
 from tensorboardX import SummaryWriter
 
+import wandb
 from configs import build_config
-from utils import setup_seed
+from infer import infer_func
 from log import get_logger
+from loss.UR_DMU_loss import AD_Loss
 from model.model import XModel
 from train_epoch import train_func
-from test import test_func
-from infer import infer_func
-from loss.UR_DMU_loss import AD_Loss
-from utils_data import get_datasets, get_dataloaders
-from utils_log import log_training_status, evaluate_and_save_model
+from utils import setup_seed
+from utils_data import get_dataloaders, get_datasets
+from utils_log import evaluate_and_save_model, log_training_status
 from utils_model import load_checkpoint, load_WSV_GST_model, save_model_weights
 
 
@@ -74,20 +75,7 @@ def train_epoch(
     return best_auc, auc_ab_auc
 
 def get_optimizer(cfg, model):
-    XEncoder_params = list(map(id, model.self_attention.parameters()))
-    main_train_params_filter = filter(lambda p: id(p) not in XEncoder_params, model.parameters())
-    optimizer = optim.Adam(
-        [
-            {
-                "params": model.self_attention.parameters(),
-                "lr": 1e-6,
-            },
-            {
-                "params": main_train_params_filter,
-                "lr": cfg.lr,
-            },
-        ]
-    )
+    optimizer = optim.Adam(model.parameters(), lr=cfg.lr)
     return optimizer
 
 def train_model(cfg, args):
@@ -104,7 +92,7 @@ def train_model(cfg, args):
 
     if args.mode == "train":
         logger_wandb = initialize_wandb(args, cfg)
-        load_WSV_GST_model(model, cfg, logger)
+        # load_WSV_GST_model(model, cfg, logger)
         criterion, criterion2, criterion3 = torch.nn.BCELoss(), torch.nn.KLDivLoss(reduction="batchmean"), AD_Loss()
         
         optimizer = get_optimizer(cfg, model)

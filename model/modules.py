@@ -1,9 +1,9 @@
 import torch
 import torch.nn as nn
 
+from .hard_attention import HardAttention
 from .layers import *
 from .UR_DMU.model import WSAD
-from .hard_attention import HardAttention
 
 
 class XEncoder(nn.Module):
@@ -52,7 +52,7 @@ class XEncoder(nn.Module):
         x_e = self.dropout2(F.gelu(self.linear2(x)))
 
         if self.training:
-            x_k["x"] = x
+            x_k["v_feat"] = x
 
         return x_e, x_k
 
