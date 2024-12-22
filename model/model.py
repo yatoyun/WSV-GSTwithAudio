@@ -35,7 +35,7 @@ class XModel(nn.Module):
         audio_dim = 128
         self.linear = nn.Linear(cfg.out_dim, audio_dim)
         self.gated_fusion = GatedFeatureFusionWithAttention(audio_dim)
-        self.hard_atten = HardAttention(k=0.95, num_samples=30, input_dim=audio_dim)
+        self.hard_atten = HardAttention(k=0.95, num_samples=20, input_dim=audio_dim)
         self.classifier = nn.Conv1d(audio_dim, 1, self.t, padding=0)
         self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / cfg.temp))
         self.dropout = nn.Dropout(cfg.dropout)
