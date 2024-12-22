@@ -86,6 +86,9 @@ def build_config(dataset):
         cfg.margin = 100
         cfg.max_epoch = 2
         
+        cfg.k_list= [30, 20]
+        cfg.max_seqlens = [300, 200]
+        
         cfg.clip_feat_prefix = '/mnt/c/Research/CLIP-TSA_dataset/xd/features/'
         cfg.audio_feat_prefix = '/mnt/c/Research/CLIP-TSA_dataset/xd/features/vggish-features/'
         cfg.WSV_GST_model_path = './ckpt/WSV_GST_xd__8698.pkl'

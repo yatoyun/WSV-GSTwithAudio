@@ -87,14 +87,14 @@ class UCFDataset(data.Dataset):
 
 
 class XDataset(data.Dataset):
-    def __init__(self, cfg, transform=None, test_mode=False, is_abnormal=False, pre_process=False):
+    def __init__(self, cfg, transform=None, test_mode=False, is_abnormal=False, pre_process=False, max_seqlen=200):
         self.feat_prefix = cfg.feat_prefix
         if test_mode:
             self.list_file = cfg.test_list
         else:
             self.list_file = cfg.train_list
 
-        self.max_seqlen = cfg.max_seqlen
+        self.max_seqlen = max_seqlen
         self.tranform = transform
         self.test_mode = test_mode
         self.t_features = np.load(cfg.token_feat)
@@ -123,8 +123,8 @@ class XDataset(data.Dataset):
             video_class_name = 'abnormal'
 
         feat_path = os.path.join(self.feat_prefix, self.list[index].strip('\n'))
-        if self.pre_process and self.max_seqlen == 200 and not self.test_mode:
-            feat_path = feat_path.replace('train', 'train-200')
+        if self.pre_process and not self.test_mode:
+            feat_path = feat_path.replace('train', f'train-{self.max_seqlen}')
         
         v_feat = np.array(np.load(feat_path), dtype=np.float32)
         tokens = self.list[index].strip('\n').split('_label_')[-1].split('__')[0].split('-')
@@ -138,14 +138,14 @@ class XDataset(data.Dataset):
             
         clip_path_name = video_name.replace('/', '/'+video_class_name+'/') + '.npy'
         clip_path = os.path.join(self.clip_feat_prefix, clip_path_name)
-        if self.pre_process and self.max_seqlen == 200 and not self.test_mode:
-            clip_path = clip_path.replace('train', 'train-200')
+        if self.pre_process and not self.test_mode:
+            clip_path = clip_path.replace('train', f'train-{self.max_seqlen}')
             
         # load audio
         audio_path_name = video_name + '__vggish.npy'
         audio_path = os.path.join(self.audio_feat_prefix, audio_path_name)
-        if self.pre_process and self.max_seqlen == 200 and not self.test_mode:
-            audio_path = audio_path.replace('train', 'train-200')
+        if self.pre_process and not self.test_mode:
+            audio_path = audio_path.replace('train', f'train-{self.max_seqlen}')
         
         clip_feat = np.array(np.load(clip_path), dtype=np.float32)
         audio_feat = np.array(np.load(audio_path), dtype=np.float32)

@@ -39,8 +39,8 @@ def load_checkpoint(model, ckpt_path, logger):
 
 def train_epoch(
     model,
-    train_nloader,
-    train_aloader,
+    train_nloader_list, 
+    train_aloader_list,
     test_loader,
     gt,
     criterion,
@@ -57,29 +57,31 @@ def train_epoch(
     auc_ab_auc = 0.0
 
     for epoch in range(cfg.max_epoch):
-        for idx, (n_input, a_input) in enumerate(zip(train_nloader, train_aloader)):
-            loss1, loss2, loss3 = train_func(
-                n_input,
-                a_input,
-                model,
-                optimizer,
-                criterion,
-                criterion2,
-                criterion3,
-                logger_wandb,
-                cfg.lamda,
-                cfg.alpha,
-                cfg.margin,
-            )
+        for k, train_nloader, train_aloader in zip(cfg.k_list, train_nloader_list, train_aloader_list):
+            for idx, (n_input, a_input) in enumerate(zip(train_nloader, train_aloader)):
+                loss1, loss2, loss3 = train_func(
+                    n_input,
+                    a_input,
+                    model,
+                    optimizer,
+                    criterion,
+                    criterion2,
+                    criterion3,
+                    logger_wandb,
+                    cfg.lamda,
+                    cfg.alpha,
+                    cfg.margin,
+                    k=k,
+                )
 
-            if epoch >= (0 if not cfg.fast else cfg.max_epoch) and (idx + 1) % 10 == 0:
-                auc, ab_auc = test_func(test_loader, model, gt, cfg.dataset, cfg.test_bs)
-                if auc > best_auc:
-                    best_auc = auc
-                    auc_ab_auc = ab_auc
-                    torch.save(model.state_dict(), os.path.join(cfg.save_dir, f"{cfg.model_name}_current.pkl"))
+                if epoch >= (0 if not cfg.fast else cfg.max_epoch) and (idx + 1) % 10 == 0:
+                    auc, ab_auc = test_func(test_loader, model, gt, cfg.dataset, cfg.test_bs)
+                    if auc > best_auc:
+                        best_auc = auc
+                        auc_ab_auc = ab_auc
+                        torch.save(model.state_dict(), os.path.join(cfg.save_dir, f"{cfg.model_name}_current.pkl"))
 
-                log_training_status(epoch, idx, loss1, loss2, loss3, auc, ab_auc, best_auc, logger)
+                    log_training_status(epoch, idx, loss1, loss2, loss3, auc, ab_auc, best_auc, logger)
 
         # scheduler.step()
         # Evaluate and save best model
@@ -132,8 +134,8 @@ def train_model(cfg, args):
     setup_seed(cfg.seed)
     logger.info(f"Config: {cfg.__dict__}")
 
-    train_normal_data, train_anomaly_data, test_data = get_datasets(cfg)
-    train_nloader, train_aloader, test_loader = get_dataloaders(cfg, train_normal_data, train_anomaly_data, test_data)
+    test_data = get_datasets(cfg)
+    train_nloader_list, train_aloader_list, test_loader = get_dataloaders(cfg, test_data)
 
     model = XModel(cfg).to(torch.device("cuda"))
     gt = np.load(cfg.gt)
@@ -164,8 +166,8 @@ def train_model(cfg, args):
 
         best_auc, auc_ab_auc = train_epoch(
             model,
-            train_nloader,
-            train_aloader,
+            train_nloader_list,
+            train_aloader_list,
             test_loader,
             gt,
             criterion,
@@ -207,26 +209,35 @@ def get_datasets(cfg):
     return train_normal_data, train_anomaly_data, test_data
 
 
-def get_dataloaders(cfg, train_normal_data, train_anomaly_data, test_data):
+def get_dataloaders(cfg, test_data):
     """Create dataloaders for training and testing."""
-    train_nloader = DataLoader(
-        train_normal_data,
-        batch_size=cfg.train_bs,
-        shuffle=True,
-        num_workers=cfg.workers,
-        pin_memory=True,
-        drop_last=True,
-    )
-    train_aloader = DataLoader(
-        train_anomaly_data,
-        batch_size=cfg.train_bs,
-        shuffle=True,
-        num_workers=cfg.workers,
-        pin_memory=True,
-        drop_last=True,
-    )
+    train_nloader_list = []
+    train_aloader_list = []
+    for max_seqlen in cfg.max_seqlens:
+        train_normal_data = XDataset(cfg, test_mode=False, pre_process=True, max_seqlen=max_seqlen)
+        train_anomaly_data = XDataset(cfg, test_mode=False, is_abnormal=True, pre_process=True, max_seqlen=max_seqlen)
+        train_nloader_list.append(
+            DataLoader(
+                train_normal_data,
+                batch_size=cfg.train_bs,
+                shuffle=True,
+                num_workers=cfg.workers,
+                pin_memory=True,
+                drop_last=True,
+            )
+        )
+        train_aloader_list.append(
+            DataLoader(
+                train_anomaly_data,
+                batch_size=cfg.train_bs,
+                shuffle=True,
+                num_workers=cfg.workers,
+                pin_memory=True,
+                drop_last=True,
+            )
+        )
     test_loader = DataLoader(test_data, batch_size=cfg.test_bs, shuffle=False, num_workers=cfg.workers, pin_memory=True)
-    return train_nloader, train_aloader, test_loader
+    return train_nloader_list, train_aloader_list, test_loader
 
 
 def initialize_wandb(args, cfg):
