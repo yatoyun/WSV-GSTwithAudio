@@ -41,7 +41,7 @@ def build_config(dataset):
         cfg.margin = 100
         cfg.max_epoch = 10
 
-        cfg.clip_feat_prefix = '/home/yukaneko/dev/CLIP-TSA_dataset/ucf/features/'
+        cfg.clip_feat_prefix = '/mnt/c/Research/CLIP-TSA_dataset/ucf/features/'
         
         cfg.result_dir = './result/ucf/'
 
@@ -86,9 +86,9 @@ def build_config(dataset):
         cfg.margin = 100
         cfg.max_epoch = 2
         
-        cfg.clip_feat_prefix = '/home/yukaneko/dev/CLIP-TSA_dataset/xd/features/'
-        cfg.audio_feat_prefix = '/home/yukaneko/dev/CLIP-TSA_dataset/xd/features/vggish-features/'
-        cfg.WSV_GST_model_path = './ckpt/WSV_GST_xd_8637.pkl'
+        cfg.clip_feat_prefix = '/mnt/c/Research/CLIP-TSA_dataset/xd/features/'
+        cfg.audio_feat_prefix = '/mnt/c/Research/CLIP-TSA_dataset/xd/features/vggish-features/'
+        cfg.WSV_GST_model_path = './ckpt/WSV_GST_xd__8698.pkl'
         cfg.result_dir = './result/xd/'
 
     elif dataset in ['sh', 'SHTech']:
@@ -141,9 +141,9 @@ def build_config(dataset):
     cfg.head_num = 1
     cfg.hid_dim = 128
     cfg.out_dim = 300
-    cfg.lr = 3e-5
-    cfg.dropout = 0.5
-    cfg.train_bs = 32
+    cfg.lr = 8e-5
+    cfg.dropout = 0.6
+    cfg.train_bs = 16
     cfg.max_seqlen = 200
     cfg.fast = False
     cfg.workers = 8
