@@ -7,6 +7,7 @@ import torch.nn.functional as F
 
 from .modules import XEncoder
 from .cross_attention import GatedFeatureFusionWithAttention
+from .hard_attention import HardAttention
 
 def weight_init(m):
     classname = m.__class__.__name__
@@ -34,6 +35,7 @@ class XModel(nn.Module):
         audio_dim = 128
         self.linear = nn.Linear(cfg.out_dim, audio_dim)
         self.gated_fusion = GatedFeatureFusionWithAttention(audio_dim)
+        self.hard_atten = HardAttention(k=0.95, num_samples=30, input_dim=audio_dim)
         self.classifier = nn.Conv1d(audio_dim, 1, self.t, padding=0)
         self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / cfg.temp))
         self.dropout = nn.Dropout(cfg.dropout)
@@ -43,6 +45,7 @@ class XModel(nn.Module):
         x_e, x_v = self.self_attention(x, c_x, a_x, seq_len)
         x_e = F.gelu(self.linear(x_e.permute(0, 2, 1)))
         
+        a_x = self.hard_atten(a_x)
         x = self.gated_fusion(x_e, a_x)
         x = x.permute(0, 2, 1)
         x_v["x"] = x
