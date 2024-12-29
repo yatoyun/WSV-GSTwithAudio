@@ -83,7 +83,7 @@ def build_config(dataset):
         cfg.alpha = 0
         
         # margin
-        cfg.margin = 100
+        cfg.margin = 90
         cfg.max_epoch = 2
         
         cfg.clip_feat_prefix = '/mnt/c/Research/CLIP-TSA_dataset/xd/features/'
