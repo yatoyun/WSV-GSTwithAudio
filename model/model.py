@@ -39,6 +39,7 @@ class XModel(nn.Module):
         self.classifier = nn.Conv1d(audio_dim, 1, self.t, padding=0)
         self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / cfg.temp))
         self.dropout = nn.Dropout(cfg.dropout)
+        self.dropout2 = nn.Dropout(0.1)
         self.apply(weight_init)
 
     def forward(self, x, c_x, a_x, seq_len):
@@ -48,6 +49,7 @@ class XModel(nn.Module):
         a_x = self.hard_atten(a_x)
         x = self.gated_fusion(x_e, a_x)
         x = x.permute(0, 2, 1)
+        x = self.dropout2(x)
         x_v["x"] = x
         
         logits = F.pad(x, (self.t - 1, 0))
