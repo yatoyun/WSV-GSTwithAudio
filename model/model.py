@@ -8,6 +8,7 @@ import torch.nn.functional as F
 from .modules import XEncoder
 from .cross_attention import GatedFeatureFusionWithAttention
 from .hard_attention import HardAttention
+from .UR_DMU.translayer import Transformer
 
 def weight_init(m):
     classname = m.__class__.__name__
@@ -39,7 +40,7 @@ class XModel(nn.Module):
         self.classifier = nn.Conv1d(audio_dim, 1, self.t, padding=0)
         self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / cfg.temp))
         self.dropout = nn.Dropout(cfg.dropout)
-        self.dropout2 = nn.Dropout(0.1)
+        self.dropout2 = nn.Dropout(0.5)
         self.apply(weight_init)
 
     def forward(self, x, c_x, a_x, seq_len):
